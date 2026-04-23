@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./bmtc.db"
+}
+
+enum Role {
+  TRAVELER
+  CONDUCTOR
+  SUPERVISOR
+  ADMIN
+}
+
+enum SessionStatus {
+  PENDING
+  APPROVED
+  TICKET_ISSUED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  ONLINE
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+}
+
+enum VerificationResult {
+  VALID
+  INVALID
+  ALREADY_CHECKED
+}
+
+model User {
+  id                String    @id @default(uuid())
+  name              String
+  email             String    @unique
+  phone             String    @unique
+  password          String
+  role              Role      @default(TRAVELER)
+  createdAt         DateTime  @default(now())
+
+  travelSessions    TravelSession[] @relation("TravelerSessions")
+  travelerTickets   Ticket[]        @relation("TravelerTickets")
+  conductedTickets  Ticket[]        @relation("ConductorTickets")
+  verifiedTickets   Ticket[]        @relation("SupervisorTickets")
+  verificationLogs  VerificationLog[]
+  buses             Bus[]
+}
+
+model Route {
+  id          String   @id @default(uuid())
+  routeName   String
+  totalStops  Int
+  createdAt   DateTime @default(now())
+
+  stops       Stop[]
+  fares       Fare[]
+  buses       Bus[]
+}
+
+model Stop {
+  id                  String   @id @default(uuid())
+  routeId             String
+  stopName            String
+  stopOrder           Int
+  distanceFromStart   Float
+
+  route               Route    @relation(fields: [routeId], references: [id])
+
+  boardingSessions    TravelSession[] @relation("BoardingStop")
+  destinationSessions TravelSession[] @relation("DestinationStop")
+}
+
+model Fare {
+  id              String   @id @default(uuid())
+  routeId         String
+  fromStopOrder   Int
+  toStopOrder     Int
+  amount          Float
+
+  route           Route    @relation(fields: [routeId], references: [id])
+}
+
+model Bus {
+  id           String   @id @default(uuid())
+  busNumber    String   @unique
+  routeId      String
+  conductorId  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  route        Route    @relation(fields: [routeId], references: [id])
+  conductor    User?    @relation(fields: [conductorId], references: [id])
+  sessions     TravelSession[]
+  tickets      Ticket[]
+}
+
+model TravelSession {
+  id                  String        @id @default(uuid())
+  travelerId          String
+  busId               String
+  boardingStopId      String
+  destinationStopId   String
+  status              SessionStatus @default(PENDING)
+  tempQRCode          String        @unique
+  qrExpiresAt         DateTime
+  createdAt           DateTime      @default(now())
+
+  traveler            User          @relation("TravelerSessions", fields: [travelerId], references: [id])
+  bus                 Bus           @relation(fields: [busId], references: [id])
+  boardingStop        Stop          @relation("BoardingStop", fields: [boardingStopId], references: [id])
+  destinationStop     Stop          @relation("DestinationStop", fields: [destinationStopId], references: [id])
+  ticket              Ticket?
+}
+
+model Ticket {
+  id                String        @id @default(uuid())
+  sessionId         String        @unique
+  travelerId        String
+  conductorId       String
+  busId             String
+  boardingStop      String
+  destinationStop   String
+  fare              Float
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus @default(PENDING)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  signedQRCode      String        @unique
+  isVerified        Boolean       @default(false)
+  verifiedAt        DateTime?
+  verifiedBy        String?
+  issuedAt          DateTime      @default(now())
+
+  session           TravelSession   @relation(fields: [sessionId], references: [id])
+  traveler          User            @relation("TravelerTickets", fields: [travelerId], references: [id])
+  conductor         User            @relation("ConductorTickets", fields: [conductorId], references: [id])
+  bus               Bus             @relation(fields: [busId], references: [id])
+  supervisor        User?           @relation("SupervisorTickets", fields: [verifiedBy], references: [id])
+  verificationLogs  VerificationLog[]
+}
+
+model VerificationLog {
+  id            String             @id @default(uuid())
+  ticketId      String
+  supervisorId  String
+  scannedAt     DateTime           @default(now())
+  result        VerificationResult
+
+  ticket        Ticket             @relation(fields: [ticketId], references: [id])
+  supervisor    User               @relation(fields: [supervisorId], references: [id])
+}

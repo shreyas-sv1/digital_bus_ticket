@@ -1,0 +1,14 @@
+node_modules/
+.next/
+dist/
+*.log
+.env*
+.DS_Store
+backend/dist/
+backend/node_modules/
+frontend/.next/
+frontend/node_modules/
+backend.zip
+*.db
+prisma/migrations/
+
