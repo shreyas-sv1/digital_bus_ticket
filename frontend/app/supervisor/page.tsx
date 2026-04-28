@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { QrCode, ClipboardList, LogOut } from 'lucide-react';
 import { StatBadge } from '@/components/supervisor/StatBadge';
 import { useAuth } from '@/lib/auth-context';
+import api from '@/lib/api';
 
 interface SupervisorStats {
   totalScanned: number;
   valid: number;
   invalid: number;
   alreadyChecked: number;
-  fraudRate: number;
+  fraudRate: string;
 }
 
 export default function SupervisorDashboard() {
@@ -19,16 +20,10 @@ export default function SupervisorDashboard() {
   const [stats, setStats] = useState<SupervisorStats | null>(null);
 
   useEffect(() => {
-    // Fetch stats
     const fetchStats = async () => {
       try {
-        const response = await fetch('/api/verification/stats', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setStats(data);
-        }
+        const response = await api.get('/verification/stats');
+        setStats(response.data);
       } catch (error) {
         console.error('Failed to fetch stats');
       }
@@ -55,9 +50,9 @@ export default function SupervisorDashboard() {
         <StatBadge label="Total Scanned" count={stats?.totalScanned || 0} colorClass="border-blue-500" />
         <StatBadge 
           label="Fraud Rate" 
-          count={`${stats?.fraudRate || 0}%`} 
+          count={stats?.fraudRate || '0%'} 
           colorClass="border-red-500" 
-          isAlert={(stats?.fraudRate || 0) > 5} 
+          isAlert={parseFloat(stats?.fraudRate || '0') > 5} 
         />
         <StatBadge label="Valid" count={stats?.valid || 0} colorClass="border-green-500" />
         <StatBadge label="Invalid / Checked" count={(stats?.invalid || 0) + (stats?.alreadyChecked || 0)} colorClass="border-amber-500" />

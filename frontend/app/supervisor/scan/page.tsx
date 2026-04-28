@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import api from '@/lib/api';
 
 export default function ScanTicket() {
   const router = useRouter();
@@ -31,16 +32,8 @@ export default function ScanTicket() {
     }
 
     try {
-      const response = await fetch('/api/verification/scan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ qrData: decodedText })
-      });
-
-      const data = await response.json();
+      const response = await api.post('/verification/scan', { qrData: decodedText });
+      const data = response.data;
       
       // Store result in session storage to display on result page
       sessionStorage.setItem('scanResult', JSON.stringify({
@@ -50,11 +43,11 @@ export default function ScanTicket() {
       }));
 
       router.push('/supervisor/result');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       sessionStorage.setItem('scanResult', JSON.stringify({
         status: 'INVALID',
-        message: 'Network Error: Could not verify ticket.',
+        message: err.response?.data?.message || 'Network Error: Could not verify ticket.',
         ticket: null
       }));
       router.push('/supervisor/result');

@@ -1,16 +1,13 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { VerifyTicketDto } from './dto/verify-ticket.dto';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class VerificationService {
   constructor(private prisma: PrismaService) {}
 
-  async verifyTicket(supervisorId: string, dto: any) {
+  async verifyTicket(supervisorId: string, dto: VerifyTicketDto) {
     // ── Step 1: Parse QR data ──────────────────────────────────────────────
     let parsed: { payload: string; signature: string };
 

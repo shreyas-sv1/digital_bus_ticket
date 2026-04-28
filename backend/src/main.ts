@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 
-const requiredEnv = ['JWT_SECRET', 'QR_SIGN_SECRET', 'RAZORPAY_KEY_ID'];
+const requiredEnv = ['JWT_SECRET', 'QR_SIGN_SECRET'];
 requiredEnv.forEach((key) => {
   if (!process.env[key]) {
     throw new Error(`Missing required environment variable: ${key}`);

@@ -7,13 +7,10 @@ import {
   Request,
 } from '@nestjs/common';
 import { VerificationService } from './verification.service';
-
+import { VerifyTicketDto } from './dto/verify-ticket.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-
-// DTO imported from file
-
 
 @Controller('verification')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -22,8 +19,8 @@ export class VerificationController {
   constructor(private verificationService: VerificationService) {}
 
   // Supervisor scans ticket QR
-@Post('scan')
-  verifyTicket(@Request() req: any, @Body() dto: any) {
+  @Post('scan')
+  verifyTicket(@Request() req: any, @Body() dto: VerifyTicketDto) {
     return this.verificationService.verifyTicket(req.user.userId, dto);
   }
 

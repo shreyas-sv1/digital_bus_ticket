@@ -12,6 +12,8 @@ import { PaymentsModule } from './payments/payments.module';
 import { VerificationModule } from './verification/verification.module';
 
 import { AdminModule } from './admin.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -32,5 +34,7 @@ import { AdminModule } from './admin.module';
     VerificationModule,
     AdminModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}

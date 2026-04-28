@@ -4,15 +4,19 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import api from '@/lib/api';
-import { Bus, MapPin, ChevronRight, LogOut, Ticket, Clock } from 'lucide-react';
+import { Bus, MapPin, ChevronRight, LogOut, Ticket, Clock, Search, AlertCircle } from 'lucide-react';
 
 export default function TravelerHome() {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const [routes, setRoutes] = useState<any[]>([]);
-  const [selectedRoute, setSelectedRoute] = useState('');
-  const [selectedBus, setSelectedBus] = useState('');
-  const [buses, setBuses] = useState<any[]>([]);
+
+  // Bus lookup
+  const [busNumber, setBusNumber] = useState('');
+  const [busData, setBusData] = useState<any>(null);
+  const [busError, setBusError] = useState('');
+  const [busLoading, setBusLoading] = useState(false);
+
+  // Journey selection
   const [stops, setStops] = useState<any[]>([]);
   const [boardingStop, setBoardingStop] = useState('');
   const [destinationStop, setDestinationStop] = useState('');
@@ -24,45 +28,37 @@ export default function TravelerHome() {
       router.push('/login');
       return;
     }
-    fetchRoutes();
-    fetchBuses();
   }, [user, router]);
 
-  const fetchRoutes = async () => {
-    try {
-      const res = await api.get('/routes');
-      setRoutes(res.data);
-    } catch {}
-  };
-
-  const fetchBuses = async () => {
-    try {
-      const res = await api.get('/buses');
-      setBuses(res.data);
-    } catch {}
-  };
-
-  const fetchStops = async (routeId: string) => {
-    try {
-      const res = await api.get(`/routes/${routeId}/stops`);
-      setStops(res.data);
-    } catch {}
-  };
-
-  const fetchFare = async (routeId: string, from: string, to: string) => {
-    try {
-      const res = await api.get(`/routes/${routeId}/fare?from=${from}&to=${to}`);
-      setFare(res.data.fare);
-    } catch {}
-  };
-
-  const handleRouteSelect = async (routeId: string) => {
-    setSelectedRoute(routeId);
-    setSelectedBus('');
+  const handleBusSearch = async () => {
+    if (!busNumber.trim()) return;
+    setBusLoading(true);
+    setBusError('');
+    setBusData(null);
+    setStops([]);
     setBoardingStop('');
     setDestinationStop('');
     setFare(null);
-    await fetchStops(routeId);
+
+    try {
+      const res = await api.get(`/buses/${encodeURIComponent(busNumber.trim().toUpperCase())}`);
+      setBusData(res.data);
+      // Load the stops for this bus's route
+      if (res.data.route?.stops) {
+        setStops(res.data.route.stops);
+      } else {
+        const stopsRes = await api.get(`/routes/${res.data.routeId}/stops`);
+        setStops(stopsRes.data);
+      }
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        setBusError('Bus not found. Please check the number and try again.');
+      } else {
+        setBusError(err.response?.data?.message || 'Could not find bus. Is the backend running?');
+      }
+    } finally {
+      setBusLoading(false);
+    }
   };
 
   const handleStopSelect = async (stopOrder: string, type: 'boarding' | 'destination') => {
@@ -72,19 +68,25 @@ export default function TravelerHome() {
       setFare(null);
     } else {
       setDestinationStop(stopOrder);
-      const route = routes.find((r) => r.id === selectedRoute);
-      if (route && boardingStop) {
-        await fetchFare(selectedRoute, boardingStop, stopOrder);
+      if (busData && boardingStop) {
+        try {
+          const res = await api.get(
+            `/routes/${busData.routeId}/fare?from=${boardingStop}&to=${stopOrder}`
+          );
+          setFare(res.data.fare);
+        } catch {
+          setFare(null);
+        }
       }
     }
   };
 
   const handleStartJourney = async () => {
-    if (!selectedBus || !boardingStop || !destinationStop) return;
+    if (!busData || !boardingStop || !destinationStop) return;
     setLoading(true);
     try {
       const res = await api.post('/sessions/start', {
-        busId: selectedBus,
+        busId: busData.id,
         boardingStopOrder: parseInt(boardingStop, 10),
         destinationStopOrder: parseInt(destinationStop, 10),
       });
@@ -97,12 +99,9 @@ export default function TravelerHome() {
     }
   };
 
-  const filteredBuses = selectedRoute
-    ? buses.filter((b) => b.route?.id === selectedRoute)
-    : buses;
-
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <div className="bg-gradient-to-r from-blue-800 to-indigo-800 px-6 pt-12 pb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -138,59 +137,69 @@ export default function TravelerHome() {
         </div>
       </div>
 
+      {/* Main Content */}
       <div className="px-6 py-6 max-w-md mx-auto">
         <h2 className="text-gray-800 font-bold text-xl mb-4">Book Your Ticket</h2>
 
+        {/* Step 1: Enter Bus Number */}
         <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
           <label className="text-gray-500 text-sm mb-2 block flex items-center gap-2">
-            <Bus className="w-4 h-4" /> Select Route
+            <Bus className="w-4 h-4 text-blue-600" /> Enter Bus Number
           </label>
-          <select
-            value={selectedRoute}
-            onChange={(e) => handleRouteSelect(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-500"
-          >
-            <option value="">Choose a BMTC route...</option>
-            {routes.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.routeName}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={busNumber}
+              onChange={(e) => setBusNumber(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleBusSearch()}
+              placeholder="e.g. KA-01-F-1234"
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-500 uppercase"
+            />
+            <button
+              onClick={handleBusSearch}
+              disabled={busLoading}
+              className="bg-blue-800 text-white px-5 py-3 rounded-xl hover:bg-blue-900 transition disabled:opacity-50 flex items-center gap-2"
+            >
+              <Search className="w-4 h-4" />
+              {busLoading ? '...' : 'Find'}
+            </button>
+          </div>
+          {busError && (
+            <div className="flex items-center gap-2 mt-3 text-red-600 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{busError}</span>
+            </div>
+          )}
         </div>
 
-        {selectedRoute && (
-          <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
-            <label className="text-gray-500 text-sm mb-2 block flex items-center gap-2">
-              <Bus className="w-4 h-4" /> Select Bus
-            </label>
-            <select
-              value={selectedBus}
-              onChange={(e) => setSelectedBus(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-500"
-            >
-              <option value="">Choose your bus...</option>
-              {filteredBuses.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.busNumber} — {b.route?.routeName}
-                </option>
-              ))}
-            </select>
+        {/* Bus Found Card */}
+        {busData && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Bus className="w-6 h-6 text-blue-700" />
+              </div>
+              <div>
+                <p className="text-blue-900 font-bold text-lg">{busData.busNumber}</p>
+                <p className="text-blue-600 text-sm">{busData.route?.routeName}</p>
+              </div>
+            </div>
           </div>
         )}
 
-        {selectedBus && stops.length > 0 && (
+        {/* Step 2: Select Boarding Stop */}
+        {busData && stops.length > 0 && (
           <>
             <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
               <label className="text-gray-500 text-sm mb-2 block flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-green-500" /> Boarding Stop
+                <MapPin className="w-4 h-4 text-green-500" /> Where are you boarding?
               </label>
               <select
                 value={boardingStop}
                 onChange={(e) => handleStopSelect(e.target.value, 'boarding')}
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-500"
               >
-                <option value="">Where are you boarding?</option>
+                <option value="">Select boarding stop...</option>
                 {stops.map((s) => (
                   <option key={s.id} value={s.stopOrder}>
                     {s.stopName}
@@ -199,17 +208,18 @@ export default function TravelerHome() {
               </select>
             </div>
 
+            {/* Step 3: Select Destination Stop */}
             {boardingStop && (
               <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
                 <label className="text-gray-500 text-sm mb-2 block flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-red-500" /> Destination Stop
+                  <MapPin className="w-4 h-4 text-red-500" /> Where are you going?
                 </label>
                 <select
                   value={destinationStop}
                   onChange={(e) => handleStopSelect(e.target.value, 'destination')}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-500"
                 >
-                  <option value="">Where are you going?</option>
+                  <option value="">Select destination stop...</option>
                   {stops
                     .filter((s) => s.stopOrder > parseInt(boardingStop, 10))
                     .map((s) => (
@@ -223,10 +233,11 @@ export default function TravelerHome() {
           </>
         )}
 
+        {/* Fare Display */}
         {fare !== null && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4 flex items-center justify-between">
             <div>
-              <p className="text-blue-600 text-sm">Estimated Fare</p>
+              <p className="text-blue-600 text-sm">Ticket Fare</p>
               <p className="text-blue-900 text-3xl font-bold">₹{fare}</p>
             </div>
             <div className="bg-blue-100 rounded-xl p-3">
@@ -235,6 +246,7 @@ export default function TravelerHome() {
           </div>
         )}
 
+        {/* Get QR Button */}
         {destinationStop && (
           <button
             onClick={handleStartJourney}
