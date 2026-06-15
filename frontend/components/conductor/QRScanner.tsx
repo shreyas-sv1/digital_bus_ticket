@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import type { Html5Qrcode } from 'html5-qrcode';
 
 interface QRScannerProps {
   onScan: (text: string) => void;
@@ -10,34 +10,88 @@ interface QRScannerProps {
 
 export default function QRScanner({ onScan, onError }: QRScannerProps) {
   const readerId = useRef(`qr-reader-${Math.random().toString(36).slice(2)}`);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isInitializing = useRef(false);
+
   useEffect(() => {
-    let qr: Html5Qrcode | null = null;
-    let cancelled = false;
+    let mounted = true;
 
     const start = async () => {
+      // Prevent double initialization
+      if (isInitializing.current || scannerRef.current) return;
+      isInitializing.current = true;
+
       try {
-        qr = new Html5Qrcode(readerId.current);
+        const { Html5Qrcode } = await import('html5-qrcode');
+        if (!mounted) {
+          isInitializing.current = false;
+          return;
+        }
+
+        const container = document.getElementById(readerId.current);
+        if (!container) {
+          isInitializing.current = false;
+          return;
+        }
+
+        const qr = new Html5Qrcode(readerId.current);
+        scannerRef.current = qr;
+
+        let hasScanned = false;
+
         await qr.start(
           { facingMode: 'environment' },
           { fps: 10, qrbox: { width: 240, height: 240 } },
           (decodedText) => {
-            if (cancelled) return;
+            if (!mounted || hasScanned) return;
+            hasScanned = true;
             onScan(decodedText);
-            qr?.stop().catch(() => undefined);
+            
+            // Stop scanner after a successful scan
+            if (qr.isScanning) {
+              qr.stop()
+                .then(() => {
+                  try {
+                    qr.clear();
+                  } catch {}
+                })
+                .catch(() => undefined);
+            }
           },
           () => undefined,
         );
       } catch (err: any) {
-        onError?.(err?.message || 'Unable to access camera');
+        isInitializing.current = false;
+        scannerRef.current = null;
+        if (mounted) {
+          const errMsg = err?.message || err || 'Camera access denied or device not found. Please enable camera permissions.';
+          onError?.(errMsg);
+        }
       }
     };
 
     start();
 
     return () => {
-      cancelled = true;
+      mounted = false;
+      isInitializing.current = false;
+      
+      const qr = scannerRef.current;
       if (qr) {
-        qr.stop().catch(() => undefined);
+        scannerRef.current = null;
+        if (qr.isScanning) {
+          qr.stop()
+            .then(() => {
+              try {
+                qr.clear();
+              } catch {}
+            })
+            .catch(() => undefined);
+        } else {
+          try {
+            qr.clear();
+          } catch {}
+        }
       }
     };
   }, [onScan, onError]);

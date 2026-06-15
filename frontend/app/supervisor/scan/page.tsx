@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Html5Qrcode } from 'html5-qrcode';
+import type { Html5Qrcode } from 'html5-qrcode';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
@@ -14,12 +14,26 @@ export default function ScanTicket() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
-    scannerRef.current = new Html5Qrcode('qr-reader');
-    startScanner();
+    let mounted = true;
+
+    const initScanner = async () => {
+      const { Html5Qrcode } = await import('html5-qrcode');
+
+      if (!mounted) return;
+
+      scannerRef.current = new Html5Qrcode('qr-reader');
+      startScanner();
+    };
+
+    initScanner();
 
     return () => {
-      if (scannerRef.current?.isScanning) {
-        scannerRef.current.stop().catch(() => undefined);
+      mounted = false;
+
+      if (scannerRef.current) {
+        scannerRef.current.stop()
+          .then(() => scannerRef.current?.clear())
+          .catch(() => undefined);
       }
     };
   }, []);
