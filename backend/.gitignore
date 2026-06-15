@@ -8,4 +8,5 @@ dist/
 .nyc_output
 coverage
 .env.example
+src/generated/
 

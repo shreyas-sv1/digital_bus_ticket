@@ -36,7 +36,11 @@ export default function CashPaymentPage() {
     setSession(parsed);
   }, [user, router, sessionId]);
 
+  const [loading, setLoading] = useState(false);
+
   const handleGenerate = async () => {
+    if (loading) return;
+    setLoading(true);
     try {
       await api.post('/tickets/generate-cash', { sessionId });
       setStatus('success');
@@ -44,6 +48,8 @@ export default function CashPaymentPage() {
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to generate ticket');
       setStatus('error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -90,9 +96,10 @@ export default function CashPaymentPage() {
 
       <button
         onClick={handleGenerate}
-        className="w-full bg-emerald-500 text-slate-950 font-bold py-5 rounded-2xl text-lg"
+        disabled={loading}
+        className="w-full bg-emerald-500 text-slate-950 font-bold py-5 rounded-2xl text-lg disabled:opacity-50"
       >
-        Generate Ticket
+        {loading ? 'Generating...' : 'Generate Ticket'}
       </button>
     </div>
   );

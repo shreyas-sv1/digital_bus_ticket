@@ -45,8 +45,11 @@ export default function ConductorSessionPage() {
     }
   };
 
+  const [loading, setLoading] = useState(false);
+
   const handlePaymentSelect = async (method: 'CASH' | 'ONLINE') => {
-    if (!session) return;
+    if (!session || loading) return;
+    setLoading(true);
     try {
       await api.patch(`/tickets/sessions/${session.sessionId}/payment-method`, {
         paymentMethod: method,
@@ -55,6 +58,8 @@ export default function ConductorSessionPage() {
       else router.push(`/conductor/session/${session.sessionId}/online`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Unable to set payment method');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -88,18 +93,20 @@ export default function ConductorSessionPage() {
 
       <div className="space-y-4">
         <button
+          disabled={loading}
           onClick={() => handlePaymentSelect('CASH')}
-          className="w-full bg-emerald-500 text-slate-950 font-bold py-5 rounded-2xl text-lg flex items-center justify-center gap-3"
+          className="w-full bg-emerald-500 text-slate-950 font-bold py-5 rounded-2xl text-lg flex items-center justify-center gap-3 disabled:opacity-50"
         >
           <Banknote className="w-6 h-6" />
-          Cash Payment
+          {loading ? 'Processing...' : 'Cash Payment'}
         </button>
         <button
+          disabled={loading}
           onClick={() => handlePaymentSelect('ONLINE')}
-          className="w-full bg-indigo-500 text-white font-bold py-5 rounded-2xl text-lg flex items-center justify-center gap-3"
+          className="w-full bg-indigo-500 text-white font-bold py-5 rounded-2xl text-lg flex items-center justify-center gap-3 disabled:opacity-50"
         >
           <CreditCard className="w-6 h-6" />
-          Online Payment
+          {loading ? 'Processing...' : 'Online Payment'}
         </button>
       </div>
     </div>

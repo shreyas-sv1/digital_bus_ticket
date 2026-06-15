@@ -436,14 +436,29 @@ export class TicketsService {
     const { signedQRData, qrCodeImage } = await this.generateSignedQR(ticket);
 
     // Update ticket — mark as paid and add signed QR
-    const updatedTicket = await this.prisma.ticket.update({
-      where: { id: ticket.id },
+    const result = await this.prisma.ticket.updateMany({
+      where: {
+        id: ticket.id,
+        paymentStatus: 'PENDING',
+      },
       data: {
         paymentStatus: 'PAID',
         razorpayPaymentId,
         signedQRCode: signedQRData,
       },
     });
+
+    if (result.count === 0) {
+      return {
+        message: 'Payment already processed',
+      };
+    }
+
+    const updatedTicket = await this.prisma.ticket.findUnique({
+      where: { id: ticket.id },
+    });
+
+    if (!updatedTicket) throw new NotFoundException('Ticket not found');
 
     // Update session status
     await this.prisma.travelSession.update({
@@ -505,14 +520,27 @@ export class TicketsService {
       const { signedQRData, qrCodeImage } = await this.generateSignedQR(ticket);
 
       // Update ticket
-      const updatedTicket = await this.prisma.ticket.update({
-        where: { id: ticket.id },
+      const result = await this.prisma.ticket.updateMany({
+        where: {
+          id: ticket.id,
+          paymentStatus: 'PENDING',
+        },
         data: {
           paymentStatus: 'PAID',
           razorpayPaymentId: paymentId,
           signedQRCode: signedQRData,
         },
       });
+
+      if (result.count === 0) {
+        return { status: 'already processed' };
+      }
+
+      const updatedTicket = await this.prisma.ticket.findUnique({
+        where: { id: ticket.id },
+      });
+
+      if (!updatedTicket) return { status: 'error' };
 
       // Update session
       await this.prisma.travelSession.update({

@@ -31,9 +31,21 @@ export class VerificationService {
       .update(parsed.payload)
       .digest('hex');
 
-    if (expectedSignature !== parsed.signature) {
+    // Timing-safe comparison
+    const isValidSignature =
+      expectedSignature.length === parsed.signature.length &&
+      crypto.timingSafeEqual(
+        Buffer.from(expectedSignature, 'utf8'),
+        Buffer.from(parsed.signature, 'utf8'),
+      );
+
+    if (!isValidSignature) {
       await this.logVerification(supervisorId, null, 'INVALID');
-      return this.buildResult('INVALID', null, 'QR signature is invalid. Ticket may be forged.');
+      return this.buildResult(
+        'INVALID',
+        null,
+        'QR signature is invalid. Ticket may be forged.',
+      );
     }
 
     // ── Step 3: Parse payload ──────────────────────────────────────────────
@@ -68,6 +80,22 @@ export class VerificationService {
       return this.buildResult('INVALID', null, 'Ticket not found in system');
     }
 
+    if (
+      ticket.travelerId !== ticketPayload.travelerId ||
+      ticket.busId !== ticketPayload.busId ||
+      ticket.fare !== ticketPayload.fare ||
+      ticket.boardingStop !== ticketPayload.boardingStop ||
+      ticket.destinationStop !== ticketPayload.destinationStop
+    ) {
+      await this.logVerification(supervisorId, ticket.id, 'INVALID');
+
+      return this.buildResult(
+        'INVALID',
+        ticket,
+        'Ticket data does not match the signed QR payload.',
+      );
+    }
+
     // ── Step 5: Check payment status ──────────────────────────────────────
     if (ticket.paymentStatus !== 'PAID') {
       await this.logVerification(supervisorId, ticket.id, 'INVALID');
@@ -82,11 +110,16 @@ export class VerificationService {
 
     // ── Step 7: Check ticket age — reject if older than 3 hours ──────────
     const issuedAt = new Date(ticket.issuedAt);
-    const ageInHours = (Date.now() - issuedAt.getTime()) / (1000 * 60 * 60);
+    const ageInHours =
+      (Date.now() - issuedAt.getTime()) / (1000 * 60 * 60);
 
-    if (ageInHours > 3) {
+    const expiryHours = Number(
+      process.env.TICKET_EXPIRY_HOURS ?? 3,
+    );
+
+    if (ageInHours > expiryHours) {
       await this.logVerification(supervisorId, ticket.id, 'INVALID');
-      return this.buildResult('INVALID', ticket, 'Ticket has expired (older than 3 hours)');
+      return this.buildResult('INVALID', ticket, `Ticket has expired (older than ${expiryHours} hours)`);
     }
 
     // ── Step 8: Mark as verified ───────────────────────────────────────────

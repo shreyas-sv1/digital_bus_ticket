@@ -93,7 +93,13 @@ export default function TicketPage() {
             <div className="flex flex-col items-center">
               <p className="text-xs text-gray-400 mb-3">Supervisor Verification QR</p>
               {ticket.qrCodeImage && (
-                <img src={ticket.qrCodeImage} alt="Verification QR" className="w-40 h-40" />
+                <img
+                  src={ticket.qrCodeImage}
+                  alt="Ticket QR"
+                  width={300}
+                  height={300}
+                  className="rounded-lg"
+                />
               )}
               <p className="text-xs text-gray-400 mt-2">Show this to the supervisor</p>
             </div>

@@ -43,12 +43,4 @@ export class AdminController {
   ) {
     return this.adminService.getFraudReport(startDate, endDate);
   }
-
-  @Get('fraud-report')
-  getFraudReport(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
-    return this.adminService.getFraudReport(startDate, endDate);
-  }
 }

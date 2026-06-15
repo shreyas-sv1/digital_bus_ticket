@@ -127,7 +127,15 @@ export default function QRPage() {
             <p className="text-gray-500 text-sm mb-2">Show this QR to the conductor</p>
 
             <div className="bg-white rounded-3xl p-6 shadow-lg mb-4">
-              {qrCodeImage && <img src={qrCodeImage} alt="Ticket QR" className="w-56 h-56" />}
+              {qrCodeImage && (
+                <img
+                  src={qrCodeImage}
+                  alt="Ticket QR"
+                  width={300}
+                  height={300}
+                  className="rounded-lg"
+                />
+              )}
             </div>
 
             <div
@@ -152,7 +160,9 @@ export default function QRPage() {
             )}
 
             <p className="text-gray-400 text-xs mt-4 text-center">
-              QR expires in {formatTime(timeLeft)}. Tap refresh if it expires.
+              {timeLeft === 0
+                ? 'QR expired. Please refresh.'
+                : `QR expires in ${formatTime(timeLeft)}. Tap refresh if it expires.`}
             </p>
           </>
         )}

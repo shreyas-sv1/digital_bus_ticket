@@ -7,8 +7,14 @@ interface TicketSummary {
   routeName?: string;
   boardingStop?: string;
   destination?: string;
+  destinationStop?: string;
   passengerName?: string;
   phone?: string;
+  traveler?: {
+    id: string;
+    name: string;
+    phone: string;
+  };
   fare?: number;
   paymentMethod?: string;
   issuedAt?: string;
@@ -77,14 +83,17 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({ status, message, tic
             <p className="font-bold flex items-center gap-2">
               <span>{ticket.boardingStop || 'Unknown'}</span>
               <span>→</span>
-              <span>{ticket.destination || 'Unknown'}</span>
+              <span>{ticket.destinationStop || ticket.destination || 'Unknown'}</span>
             </p>
           </div>
 
           <div className="flex justify-between items-center border-b pb-2">
             <div>
               <p className="text-xs text-gray-500 uppercase">Passenger</p>
-              <p className="font-bold">{ticket.passengerName || 'Unknown'} {ticket.phone ? `(${ticket.phone})` : ''}</p>
+              <p className="font-bold">
+                {ticket.traveler?.name || ticket.passengerName || 'Unknown'}{' '}
+                {ticket.traveler?.phone || ticket.phone ? `(${ticket.traveler?.phone || ticket.phone})` : ''}
+              </p>
             </div>
           </div>
 
