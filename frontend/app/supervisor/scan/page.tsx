@@ -12,37 +12,20 @@ export default function ScanTicket() {
   const [error, setError] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const initScanner = async () => {
-      const { Html5Qrcode } = await import('html5-qrcode');
-
-      if (!mounted) return;
-
-      scannerRef.current = new Html5Qrcode('qr-reader');
-      startScanner();
-    };
-
-    initScanner();
-
-    return () => {
-      mounted = false;
-
-      if (scannerRef.current) {
-        scannerRef.current.stop()
-          .then(() => scannerRef.current?.clear())
-          .catch(() => undefined);
-      }
-    };
-  }, []);
+  const isInitializing = useRef(false);
 
   const handleScan = async (decodedText: string) => {
     if (isScanning) return;
     setIsScanning(true);
-    if (scannerRef.current?.isScanning) {
-      await scannerRef.current.stop().catch(console.error);
+
+    const qr = scannerRef.current;
+    if (qr && qr.isScanning) {
+      try {
+        await qr.stop();
+      } catch {}
+      try {
+        qr.clear();
+      } catch {}
     }
 
     try {
@@ -68,20 +51,86 @@ export default function ScanTicket() {
     }
   };
 
-  const startScanner = async () => {
-    try {
-      await scannerRef.current?.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => handleScan(decodedText),
-        (errorMessage) => {
-          // ignore frame errors
+  useEffect(() => {
+    let mounted = true;
+
+    const initScanner = async () => {
+      // Prevent double initialization
+      if (isInitializing.current || scannerRef.current) return;
+      isInitializing.current = true;
+
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode');
+        if (!mounted) {
+          isInitializing.current = false;
+          return;
         }
-      );
-    } catch (err: any) {
-      setError('Camera access denied or device not found. Please enable camera permissions.');
-    }
-  };
+
+        const container = document.getElementById('qr-reader');
+        if (!container) {
+          isInitializing.current = false;
+          return;
+        }
+
+        const qr = new Html5Qrcode('qr-reader');
+        scannerRef.current = qr;
+
+        let hasScanned = false;
+
+        await qr.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          (decodedText) => {
+            if (!mounted || hasScanned) return;
+            hasScanned = true;
+            handleScan(decodedText);
+
+            if (qr.isScanning) {
+              qr.stop()
+                .then(() => {
+                  try {
+                    qr.clear();
+                  } catch {}
+                })
+                .catch(() => undefined);
+            }
+          },
+          () => {
+            // ignore frame errors
+          }
+        );
+      } catch (err: any) {
+        isInitializing.current = false;
+        scannerRef.current = null;
+        if (mounted) {
+          setError('Camera access denied or device not found. Please enable camera permissions.');
+        }
+      }
+    };
+
+    initScanner();
+
+    return () => {
+      mounted = false;
+      isInitializing.current = false;
+
+      const qr = scannerRef.current;
+      if (qr) {
+        scannerRef.current = null;
+        const cleanUp = async () => {
+          try {
+            if (qr.isScanning) {
+              await qr.stop();
+            }
+          } catch {}
+          try {
+            qr.clear();
+          } catch {}
+        };
+        cleanUp();
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative">
