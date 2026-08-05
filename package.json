@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "seed": "npm --prefix backend run seed"
+  },
   "dependencies": {
     "@nestjs/schedule": "^6.1.3",
     "@types/express": "^5.0.6",
