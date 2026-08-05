@@ -6,7 +6,8 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { TrendingUp, BarChart2, ShieldAlert } from 'lucide-react';
+import { TrendingUp, BarChart2, ShieldAlert, PieChart, Sparkles } from 'lucide-react';
+import PowerBIDashboard from '@/components/admin/PowerBIDashboard';
 
 interface DayData {
   date: string;
@@ -21,6 +22,7 @@ const fmt = (d: string) =>
   new Date(d).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
 
 export default function AdminAnalyticsPage() {
+  const [activeTab, setActiveTab] = useState<'powerbi' | 'native'>('powerbi');
   const [days, setDays] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,74 +65,107 @@ export default function AdminAnalyticsPage() {
 
   return (
     <section className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
-        <p className="text-sm text-slate-500">Last 7 days of operations</p>
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Executive Analytics</h1>
+          <p className="text-sm text-slate-500">BMTC smart ticketing operations &amp; business intelligence</p>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="inline-flex rounded-xl bg-slate-200/80 p-1 border border-slate-300/50 shadow-inner">
+          <button
+            onClick={() => setActiveTab('powerbi')}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition ${
+              activeTab === 'powerbi'
+                ? 'bg-amber-500 text-white shadow-sm'
+                : 'text-slate-700 hover:text-slate-900'
+            }`}
+          >
+            <Sparkles className="h-3.5 w-3.5" /> Power BI Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab('native')}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition ${
+              activeTab === 'native'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-700 hover:text-slate-900'
+            }`}
+          >
+            <PieChart className="h-3.5 w-3.5" /> Native Charts
+          </button>
+        </div>
       </header>
 
-      {/* KPI summary cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 flex items-center gap-4">
-          <div className="rounded-xl bg-emerald-100 p-3">
-            <TrendingUp className="w-5 h-5 text-emerald-700" />
+      {/* Main View rendering based on activeTab */}
+      {activeTab === 'powerbi' ? (
+        <PowerBIDashboard />
+      ) : (
+        <div className="space-y-6">
+          {/* KPI summary cards */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl bg-white border border-slate-200 p-5 flex items-center gap-4">
+              <div className="rounded-xl bg-emerald-100 p-3">
+                <TrendingUp className="w-5 h-5 text-emerald-700" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Revenue (7d)</p>
+                <p className="text-2xl font-bold text-slate-900">₹{totalRevenue7d.toFixed(0)}</p>
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white border border-slate-200 p-5 flex items-center gap-4">
+              <div className="rounded-xl bg-blue-100 p-3">
+                <BarChart2 className="w-5 h-5 text-blue-700" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Tickets (7d)</p>
+                <p className="text-2xl font-bold text-slate-900">{totalTickets7d}</p>
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white border border-slate-200 p-5 flex items-center gap-4">
+              <div className="rounded-xl bg-rose-100 p-3">
+                <ShieldAlert className="w-5 h-5 text-rose-700" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Invalid scans (7d)</p>
+                <p className="text-2xl font-bold text-slate-900">{totalFraud7d}</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-slate-500">Revenue (7d)</p>
-            <p className="text-2xl font-bold text-slate-900">₹{totalRevenue7d.toFixed(0)}</p>
-          </div>
-        </div>
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 flex items-center gap-4">
-          <div className="rounded-xl bg-blue-100 p-3">
-            <BarChart2 className="w-5 h-5 text-blue-700" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Tickets (7d)</p>
-            <p className="text-2xl font-bold text-slate-900">{totalTickets7d}</p>
-          </div>
-        </div>
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 flex items-center gap-4">
-          <div className="rounded-xl bg-rose-100 p-3">
-            <ShieldAlert className="w-5 h-5 text-rose-700" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Invalid scans (7d)</p>
-            <p className="text-2xl font-bold text-slate-900">{totalFraud7d}</p>
-          </div>
-        </div>
-      </div>
 
-      {/* Revenue trend line chart */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-5">
-        <h2 className="font-semibold text-slate-800 mb-4">Daily Revenue Trend</h2>
-        <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#64748b' }} />
-            <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => `₹${v}`} />
-            <Tooltip formatter={(v: any) => [typeof v === 'number' ? `₹${v.toFixed(2)}` : '', '']} />
-            <Legend />
-            <Line type="monotone" dataKey="totalRevenue" name="Total" stroke="#6366f1" strokeWidth={2} dot={{ r: 4 }} />
-            <Line type="monotone" dataKey="cashRevenue" name="Cash" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} />
-            <Line type="monotone" dataKey="onlineRevenue" name="Online" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+          {/* Revenue trend line chart */}
+          <div className="rounded-2xl bg-white border border-slate-200 p-5">
+            <h2 className="font-semibold text-slate-800 mb-4">Daily Revenue Trend</h2>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#64748b' }} />
+                <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => `₹${v}`} />
+                <Tooltip formatter={(v: any) => [typeof v === 'number' ? `₹${v.toFixed(2)}` : '', '']} />
+                <Legend />
+                <Line type="monotone" dataKey="totalRevenue" name="Total" stroke="#6366f1" strokeWidth={2} dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="cashRevenue" name="Cash" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="onlineRevenue" name="Online" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
 
-      {/* Ticket count & fraud bar chart */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-5">
-        <h2 className="font-semibold text-slate-800 mb-4">Daily Tickets &amp; Invalid Scans</h2>
-        <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#64748b' }} />
-            <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="ticketCount" name="Tickets" fill="#6366f1" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="invalidScans" name="Invalid Scans" fill="#f43f5e" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+          {/* Ticket count & fraud bar chart */}
+          <div className="rounded-2xl bg-white border border-slate-200 p-5">
+            <h2 className="font-semibold text-slate-800 mb-4">Daily Tickets &amp; Invalid Scans</h2>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#64748b' }} />
+                <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="ticketCount" name="Tickets" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="invalidScans" name="Invalid Scans" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
