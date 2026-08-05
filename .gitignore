@@ -1,0 +1,16 @@
+node_modules/
+.next/
+dist/
+*.log
+.env
+.env.local
+.env.development
+.env.production
+!.env.example
+.DS_Store
+backend/dist/
+backend/node_modules/
+frontend/.next/
+frontend/node_modules/
+backend.zip
+*.db

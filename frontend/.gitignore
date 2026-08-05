@@ -1,0 +1,82 @@
+# 🔐 SECRETS & ENVIRONMENT - CRITICAL: DO NOT COMMIT
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+.env.development
+.env.test
+*.pem
+*.key
+*.crt
+.env.backup
+.env.local.backup
+secrets/
+.credentials
+
+# 📦 DEPENDENCIES
+node_modules/
+package-lock.json.backup
+yarn.lock.backup
+/.pnp
+.pnp.js
+
+# 🏗️ BUILD OUTPUTS & CACHE
+.next/
+out/
+build/
+dist/
+.cache/
+.turbo/
+.vercel/
+.vercelignore
+
+# 📝 LOGS
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# 🧪 TESTING & COVERAGE
+coverage/
+.nyc_output/
+*.lcov
+
+# 💾 DATABASE
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+
+# 🔧 IDE & EDITORS
+.vscode/
+.idea/
+.atom/
+.sublime-project
+.sublime-workspace
+*.swp
+*.swo
+*~
+.env.local.js
+
+# 🖥️ OS FILES
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# 🔄 GIT
+.git/
+.gitignore.bak
+.gitattributes.bak
+
+# 🛠️ MISC
+temp/
+tmp/
+*.backup

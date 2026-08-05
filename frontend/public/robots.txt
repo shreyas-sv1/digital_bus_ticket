@@ -1,0 +1,32 @@
+# BMTC SmartTicket - robots.txt
+# Allow search engines to crawl all pages
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+Disallow: /conductor/
+Disallow: /supervisor/
+Disallow: /traveler/
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+
+# Sitemaps
+Sitemap: https://yourdomain.com/sitemap.xml
+
+# Crawl delay (respectful crawling)
+Crawl-delay: 1
+
+# Specific bot rules
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+
+User-agent: bingbot
+Allow: /
+Disallow: /api/
+Disallow: /_next/
