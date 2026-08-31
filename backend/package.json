@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/main.js",
+    "start:prod": "npx prisma db push && node dist/main.js",
     "dev": "tsx watch src/main.ts",
     "postinstall": "prisma generate",
     "seed": "prisma db seed",
