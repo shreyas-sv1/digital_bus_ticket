@@ -104,6 +104,33 @@ export default function LoginPage() {
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
+
+        {/* Demo Credentials Section */}
+        <div className="mt-8 pt-6 border-t border-white/20">
+          <p className="text-blue-200 text-xs font-semibold mb-3 uppercase tracking-wide">Demo Credentials by Role</p>
+          <div className="grid grid-cols-1 gap-2">
+            <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5">
+              <p className="text-white text-xs font-semibold">👤 Admin</p>
+              <p className="text-blue-300 text-xs font-mono mt-1">admin@bmtc.com</p>
+              <p className="text-blue-300 text-xs font-mono">admin123</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5">
+              <p className="text-white text-xs font-semibold">🚌 Conductor</p>
+              <p className="text-blue-300 text-xs font-mono mt-1">conductor@bmtc.com</p>
+              <p className="text-blue-300 text-xs font-mono">conductor123</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5">
+              <p className="text-white text-xs font-semibold">📋 Supervisor</p>
+              <p className="text-blue-300 text-xs font-mono mt-1">supervisor@bmtc.com</p>
+              <p className="text-blue-300 text-xs font-mono">supervisor123</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5">
+              <p className="text-white text-xs font-semibold">✈️ Traveler</p>
+              <p className="text-blue-300 text-xs font-mono mt-1">traveler@bmtc.com</p>
+              <p className="text-blue-300 text-xs font-mono">traveler123</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <p className="text-center text-blue-200 mt-6">
