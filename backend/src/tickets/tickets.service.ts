@@ -303,7 +303,7 @@ export class TicketsService {
       take: 20,
     });
 
-    return tickets.map((t) => ({
+    return tickets.map((t: any) => ({
       id: t.id,
       busNumber: t.bus.busNumber,
       routeName: t.bus.route.routeName,

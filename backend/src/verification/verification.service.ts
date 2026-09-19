@@ -148,7 +148,7 @@ export class VerificationService {
       take: 50,
     });
 
-    return logs.map((log) => ({
+    return logs.map((log: any) => ({
       id: log.id,
       result: log.result,
       scannedAt: log.scannedAt,
