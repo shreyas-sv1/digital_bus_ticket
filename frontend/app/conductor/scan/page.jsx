@@ -27,10 +27,6 @@ export default function ConductorScanPage() {
         catch { }
     }, [user?.id]);
     useEffect(() => {
-        if (!user || user.role !== 'CONDUCTOR') {
-            router.push('/login');
-            return;
-        }
         loadAssignedBus();
     }, [user, router, loadAssignedBus]);
     const handleScan = async (qrText) => {

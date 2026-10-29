@@ -1,7 +1,25 @@
+'use client';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
+import { homeForRole } from '@/lib/roles';
 import Link from 'next/link';
 import { Bus } from 'lucide-react';
 
 export default function LandingPage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace(homeForRole(user.role));
+    }
+  }, [isLoading, router, user]);
+
+  if (isLoading || user) {
+    return <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900" />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex flex-col items-center justify-center px-6 text-center">
       <div className="flex items-center gap-2 mb-6">

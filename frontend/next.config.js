@@ -1,3 +1,9 @@
+if (!process.env.NEXT_PUBLIC_API_URL) {
+  console.warn(
+    '[BMTC SmartTicket] NEXT_PUBLIC_API_URL is missing; API requests cannot reach the backend.',
+  );
+}
+
 const nextConfig = {
   turbopack: {
     root: __dirname,

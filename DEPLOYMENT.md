@@ -64,7 +64,7 @@ QR_SIGN_SECRET=<generate-with-command-below>
 RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxx
 RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxx
 RAZORPAY_WEBHOOK_SECRET=whsec_xxxxxxxxxxxx
-FRONTEND_URL=https://yourdomain.vercel.app
+FRONTEND_URL=https://your-project.vercel.app
 NODE_ENV=production
 PORT=3001
 ```
@@ -96,7 +96,6 @@ In Vercel dashboard → Settings → Environment Variables:
 ```bash
 NEXT_PUBLIC_API_URL=https://your-project.up.railway.app
 NEXT_PUBLIC_SOCKET_URL=https://your-project.up.railway.app
-NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxx
 ```
 
 **Step 3: Deploy**
@@ -106,7 +105,9 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxx
 
 **Step 4: Update Backend Frontend URL**
 1. Go back to Railway dashboard
-2. Update `FRONTEND_URL` variable to your Vercel URL
+2. Update `FRONTEND_URL` to the exact Vercel deployment URL (for example,
+   `https://your-project.vercel.app`). Separate multiple allowed production or preview
+   origins with commas. The same allowlist is used by the API and Socket.IO.
 3. Redeploy backend
 
 ---
@@ -440,7 +441,6 @@ psql bmtc_smartticket < backup.sql
 ```bash
 ✅ NEXT_PUBLIC_API_URL        - Your backend domain
 ✅ NEXT_PUBLIC_SOCKET_URL     - Your backend domain (same as API)
-✅ NEXT_PUBLIC_RAZORPAY_KEY_ID - From Razorpay (public key)
 ```
 
 ### How to Keep Secrets Secure

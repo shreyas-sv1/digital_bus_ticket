@@ -1,12 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import api from '@/lib/api';
 import SessionCard from '@/components/conductor/SessionCard';
 import { Banknote, CreditCard, AlertTriangle, Loader2 } from 'lucide-react';
 export default function ConductorSessionPage() {
-    const { user } = useAuth();
     const router = useRouter();
     const params = useParams();
     const sessionId = params?.id;
@@ -16,10 +14,6 @@ export default function ConductorSessionPage() {
     const [loading, setLoading] = useState(true);
     const [settingMethod, setSettingMethod] = useState(false);
     useEffect(() => {
-        if (!user || user.role !== 'CONDUCTOR') {
-            router.push('/login');
-            return;
-        }
         const stored = localStorage.getItem('scannedSession');
         if (!stored) {
             router.push('/conductor/scan');
@@ -32,7 +26,7 @@ export default function ConductorSessionPage() {
         }
         setSession(parsed);
         approveSession(parsed.sessionId);
-    }, [user, router, sessionId]);
+    }, [router, sessionId]);
     const approveSession = async (id) => {
         try {
             const res = await api.patch(`/tickets/sessions/${id}/approve`);

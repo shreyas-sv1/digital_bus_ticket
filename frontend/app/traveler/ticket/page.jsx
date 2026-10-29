@@ -1,26 +1,39 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import { Bus, CreditCard, CheckCircle, Home } from 'lucide-react';
+import { Bus, CreditCard, CheckCircle, Home, Share2, Download } from 'lucide-react';
 export default function TicketPage() {
-    const { user } = useAuth();
     const router = useRouter();
     const [ticket, setTicket] = useState(null);
+    const [shareError, setShareError] = useState('');
     useEffect(() => {
-        if (!user) {
-            router.push('/login');
-            return;
-        }
         const stored = localStorage.getItem('issuedTicket');
         if (!stored) {
             router.push('/traveler');
             return;
         }
         setTicket(JSON.parse(stored));
-    }, [user, router]);
+    }, [router]);
     if (!ticket)
         return null;
+    const validUntil = ticket.validUntil || ticket.expiresAt;
+    const shareTicket = async () => {
+        setShareError('');
+        const text = `${ticket.busNumber} · ${ticket.boardingStop} to ${ticket.destinationStop} · ₹${ticket.fare}`;
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: 'BMTC SmartTicket', text });
+            } else if (navigator.clipboard) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                setShareError('Sharing is not available in this browser.');
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                setShareError('Could not share this ticket. Please try again.');
+            }
+        }
+    };
     return (<div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
@@ -82,6 +95,9 @@ export default function TicketPage() {
                 </p>
               </div>
             </div>
+            <p className="mb-4 text-xs text-gray-500">
+              Valid until: {validUntil ? new Date(validUntil).toLocaleString('en-IN') : 'No expiry specified'}
+            </p>
 
             <div className="border-t-2 border-dashed border-gray-200 my-4"/>
 
@@ -98,11 +114,20 @@ export default function TicketPage() {
           <span className="text-sm font-semibold">Digitally Signed & Verified</span>
         </div>
 
+        <div className="mt-4 grid grid-cols-2 gap-3 print:hidden">
+          <button onClick={() => window.print()} className="flex items-center justify-center gap-2 rounded-xl bg-white py-3 font-semibold text-blue-800 shadow-sm">
+            <Download className="h-4 w-4"/>Download / Print
+          </button>
+          <button onClick={shareTicket} className="flex items-center justify-center gap-2 rounded-xl bg-white py-3 font-semibold text-blue-800 shadow-sm">
+            <Share2 className="h-4 w-4"/>Share
+          </button>
+        </div>
+        {shareError && <p role="alert" className="mt-2 text-center text-sm text-red-600 print:hidden">{shareError}</p>}
         <button onClick={() => {
             localStorage.removeItem('activeSession');
             localStorage.removeItem('issuedTicket');
             router.push('/traveler');
-        }} className="w-full mt-4 flex items-center justify-center gap-2 bg-blue-800 text-white py-4 rounded-2xl font-bold">
+        }} className="w-full mt-4 flex items-center justify-center gap-2 bg-blue-800 text-white py-4 rounded-2xl font-bold print:hidden">
           <Home className="w-4 h-4"/>
           Back to Home
         </button>

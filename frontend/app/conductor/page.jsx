@@ -27,12 +27,8 @@ export default function ConductorHomePage() {
     }, [user?.id]);
 
     useEffect(() => {
-        if (!user || user.role !== 'CONDUCTOR') {
-            router.push('/login');
-            return;
-        }
         loadAssignedBus();
-    }, [user, router, loadAssignedBus]);
+    }, [loadAssignedBus]);
 
     const handleLogout = () => {
         localStorage.removeItem('conductorBus');

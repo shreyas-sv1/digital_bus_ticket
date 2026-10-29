@@ -1,11 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import api from '@/lib/api';
 import { CheckCircle, Banknote, AlertTriangle, Loader2, ArrowLeft, User, MapPin } from 'lucide-react';
 export default function CashPaymentPage() {
-    const { user } = useAuth();
     const router = useRouter();
     const params = useParams();
     const sessionId = params?.id;
@@ -13,10 +11,6 @@ export default function CashPaymentPage() {
     const [status, setStatus] = useState('ready');
     const [error, setError] = useState('');
     useEffect(() => {
-        if (!user || user.role !== 'CONDUCTOR') {
-            router.push('/login');
-            return;
-        }
         const stored = localStorage.getItem('scannedSession');
         if (!stored) {
             router.push('/conductor/scan');
@@ -28,7 +22,7 @@ export default function CashPaymentPage() {
             return;
         }
         setSession(parsed);
-    }, [user, router, sessionId]);
+    }, [router, sessionId]);
     const handleGenerate = async () => {
         setStatus('generating');
         try {

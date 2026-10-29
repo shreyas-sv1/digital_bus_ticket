@@ -31,10 +31,6 @@ export default function QRPage() {
         };
     }, []);
     useEffect(() => {
-        if (!user) {
-            router.push('/login');
-            return;
-        }
         const stored = localStorage.getItem('activeSession');
         if (!stored) {
             router.push('/traveler');
@@ -85,7 +81,7 @@ export default function QRPage() {
             unsubPaymentRequest();
             clearInterval(pollInterval);
         };
-    }, [user, router, status]);
+    }, [router, status]);
     useEffect(() => {
         if (!sessionData)
             return;

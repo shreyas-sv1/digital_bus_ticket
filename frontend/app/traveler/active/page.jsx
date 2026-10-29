@@ -1,22 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import { ArrowLeft, Bus, MapPin, Clock } from 'lucide-react';
 export default function ActiveSessionPage() {
-    const { user } = useAuth();
     const router = useRouter();
     const [session, setSession] = useState(null);
     useEffect(() => {
-        if (!user) {
-            router.push('/login');
-            return;
-        }
         const stored = localStorage.getItem('activeSession');
         if (!stored)
             return;
         setSession(JSON.parse(stored));
-    }, [user, router]);
+    }, [router]);
     return (<div className="min-h-screen bg-gray-50">
       <div className="bg-gradient-to-r from-blue-800 to-indigo-800 px-6 pt-12 pb-6">
         <button onClick={() => router.back()} className="text-white mb-4">

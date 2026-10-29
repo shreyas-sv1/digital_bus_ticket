@@ -1,21 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import api from '@/lib/api';
 import SummaryCard from '@/components/conductor/SummaryCard';
 import { ArrowLeft, Bus } from 'lucide-react';
 export default function ConductorSummaryPage() {
-    const { user } = useAuth();
     const router = useRouter();
     const [summary, setSummary] = useState(null);
     useEffect(() => {
-        if (!user || user.role !== 'CONDUCTOR') {
-            router.push('/login');
-            return;
-        }
         fetchSummary();
-    }, [user, router]);
+    }, [router]);
     const fetchSummary = async () => {
         try {
             const res = await api.get('/tickets/conductor/summary');

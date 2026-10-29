@@ -1,22 +1,15 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import api from '@/lib/api';
 import { Search, MapPin, Bus, ArrowRight, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 export default function TravelerSearchPage() {
-    const { user } = useAuth();
     const router = useRouter();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const debounceRef = useRef();
-    useEffect(() => {
-        if (!user || user.role !== 'TRAVELER') {
-            router.replace('/login');
-        }
-    }, [user, router]);
     useEffect(() => {
         if (query.trim().length < 2) {
             setResults([]);

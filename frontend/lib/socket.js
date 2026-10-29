@@ -1,10 +1,12 @@
 import { io } from 'socket.io-client';
 import Cookies from 'js-cookie';
 let socket = null;
+const socketUrl =
+    process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL;
 export const getSocket = () => {
     if (!socket) {
         const token = Cookies.get('token');
-        socket = io(process.env.NEXT_PUBLIC_SOCKET_URL, {
+        socket = io(socketUrl, {
             transports: ['websocket'],
             autoConnect: false,
             // Pass JWT so the backend gateway can authenticate the connection.

@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { homeForRole } from '@/lib/roles';
 import api from '@/lib/api';
 import { Bus, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -11,8 +12,13 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
+    const { login, user, isLoading } = useAuth();
     const router = useRouter();
+    useEffect(() => {
+        if (!isLoading && user) {
+            router.replace(homeForRole(user.role));
+        }
+    }, [isLoading, router, user]);
     const handleLogin = async () => {
         if (!email || !password)
             return setError('Please fill all fields');
@@ -21,19 +27,15 @@ export default function LoginPage() {
         try {
             const res = await api.post('/auth/login', { email, password });
             login(res.data.token, res.data.user);
-            const role = res.data.user.role;
-            if (role === 'TRAVELER')
-                router.push('/traveler');
-            else if (role === 'CONDUCTOR')
-                router.push('/conductor');
-            else if (role === 'SUPERVISOR')
-                router.push('/supervisor');
-            else if (role === 'ADMIN')
-                router.push('/admin');
+            router.push(homeForRole(res.data.user.role));
         }
         catch (err) {
             if (!err.response) {
-                setError('Backend server is not reachable. Please start API on port 3001.');
+                setError(
+                    process.env.NODE_ENV === 'production'
+                        ? 'Cannot reach server, try again'
+                        : 'Cannot reach server, try again. Check that the API is running.',
+                );
             }
             else {
                 setError(err.response?.data?.message || 'Invalid credentials');
@@ -43,6 +45,9 @@ export default function LoginPage() {
             setLoading(false);
         }
     };
+    if (isLoading || user) {
+        return null;
+    }
     return (<div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex flex-col px-6 py-8">
       <Link href="/" className="text-white mb-8">
         <ArrowLeft className="w-6 h-6"/>

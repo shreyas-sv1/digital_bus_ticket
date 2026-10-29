@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { homeForRole } from '@/lib/roles';
 import api from '@/lib/api';
 import { Bus, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -9,8 +10,13 @@ export default function RegisterPage() {
     const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
+    const { login, user, isLoading } = useAuth();
     const router = useRouter();
+    useEffect(() => {
+        if (!isLoading && user) {
+            router.replace(homeForRole(user.role));
+        }
+    }, [isLoading, router, user]);
     const handleRegister = async () => {
         if (!form.name || !form.email || !form.phone || !form.password)
             return setError('Please fill all fields');
@@ -21,7 +27,7 @@ export default function RegisterPage() {
         try {
             const res = await api.post('/auth/register', form);
             login(res.data.token, res.data.user);
-            router.push('/traveler');
+            router.push(homeForRole(res.data.user.role));
         }
         catch (err) {
             setError(err.response?.data?.message || 'Registration failed');
@@ -30,6 +36,9 @@ export default function RegisterPage() {
             setLoading(false);
         }
     };
+    if (isLoading || user) {
+        return null;
+    }
     return (<div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex flex-col px-6 py-8">
       <Link href="/" className="text-white mb-8">
         <ArrowLeft className="w-6 h-6"/>

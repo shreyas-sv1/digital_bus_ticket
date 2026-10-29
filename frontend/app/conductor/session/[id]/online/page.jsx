@@ -1,12 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import api from '@/lib/api';
 import { joinSession, onPaymentReceived } from '@/lib/socket';
 import { CheckCircle, AlertTriangle, CreditCard, Loader2, ArrowLeft, User, MapPin, Wifi } from 'lucide-react';
 export default function OnlinePaymentPage() {
-    const { user } = useAuth();
     const router = useRouter();
     const params = useParams();
     const sessionId = params?.id;
@@ -15,10 +13,6 @@ export default function OnlinePaymentPage() {
     const [error, setError] = useState('');
     const [order, setOrder] = useState(null);
     useEffect(() => {
-        if (!user || user.role !== 'CONDUCTOR') {
-            router.push('/login');
-            return;
-        }
         const stored = localStorage.getItem('scannedSession');
         if (!stored) {
             router.push('/conductor/scan');
@@ -44,7 +38,7 @@ export default function OnlinePaymentPage() {
         return () => {
             unsubscribe();
         };
-    }, [user, router, sessionId]);
+    }, [router, sessionId]);
     const createOrder = async (id) => {
         try {
             const res = await api.post(`/tickets/sessions/${id}/create-order`);

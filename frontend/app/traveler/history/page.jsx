@@ -1,30 +1,48 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import api from '@/lib/api';
 import { ArrowLeft, Bus, MapPin, CheckCircle, Clock } from 'lucide-react';
 export default function HistoryPage() {
-    const { user } = useAuth();
     const router = useRouter();
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [dateFilter, setDateFilter] = useState('');
+    const [routeFilter, setRouteFilter] = useState('');
+    const [page, setPage] = useState(1);
     useEffect(() => {
-        if (!user) {
-            router.push('/login');
-            return;
-        }
         fetchHistory();
-    }, [user, router]);
+    }, [router]);
     const fetchHistory = async () => {
         try {
             const res = await api.get('/tickets/my');
             setTickets(res.data);
         }
         catch {
+            setError('Could not load ticket history. Please try again.');
         }
         finally {
             setLoading(false);
+        }
+    };
+    const filteredTickets = tickets.filter((ticket) => {
+        const route = ticket.routeName || ticket.route?.routeName || '';
+        const matchesDate = !dateFilter || new Date(ticket.issuedAt).toISOString().slice(0, 10) === dateFilter;
+        const matchesRoute = !routeFilter || route.toLowerCase().includes(routeFilter.toLowerCase());
+        return matchesDate && matchesRoute;
+    });
+    const pageSize = 8;
+    const pageCount = Math.max(1, Math.ceil(filteredTickets.length / pageSize));
+    const visibleTickets = filteredTickets.slice((page - 1) * pageSize, page * pageSize);
+    const openTicket = async (ticket) => {
+        setError('');
+        try {
+            const response = await api.get(`/tickets/${ticket.id}`);
+            localStorage.setItem('issuedTicket', JSON.stringify(response.data));
+            router.push('/traveler/ticket');
+        } catch {
+            setError('Could not load this ticket. Please try again.');
         }
     };
     return (<div className="min-h-screen bg-gray-50">
@@ -37,6 +55,15 @@ export default function HistoryPage() {
       </div>
 
       <div className="px-6 py-6 max-w-md mx-auto">
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="text-sm text-gray-600">Date
+            <input type="date" value={dateFilter} onChange={(event) => { setDateFilter(event.target.value); setPage(1); }} className="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3"/>
+          </label>
+          <label className="text-sm text-gray-600">Route
+            <input type="search" value={routeFilter} onChange={(event) => { setRouteFilter(event.target.value); setPage(1); }} placeholder="Filter by route" className="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3"/>
+          </label>
+        </div>
+        {error && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
         {loading && (<div className="space-y-3" aria-label="Loading tickets">
             {[1, 2, 3].map((i) => (<div key={i} className="bg-white rounded-2xl shadow-sm p-4 animate-pulse">
                 <div className="flex items-center justify-between mb-3">
@@ -51,13 +78,13 @@ export default function HistoryPage() {
               </div>))}
           </div>)}
 
-        {!loading && tickets.length === 0 && (<div className="text-center py-12">
+        {!loading && filteredTickets.length === 0 && (<div className="text-center py-12">
             <Bus className="w-12 h-12 text-gray-300 mx-auto mb-3"/>
-            <p className="text-gray-500">No tickets yet. Start your first journey!</p>
+            <p className="text-gray-500">{tickets.length ? 'No tickets match these filters.' : 'No tickets yet. Start your first journey!'}</p>
           </div>)}
 
         <div className="space-y-3">
-          {tickets.map((ticket) => (<div key={ticket.id} className="bg-white rounded-2xl shadow-sm p-4">
+          {visibleTickets.map((ticket) => (<button key={ticket.id} onClick={() => openTicket(ticket)} className="w-full bg-white rounded-2xl shadow-sm p-4 text-left">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Bus className="w-4 h-4 text-blue-600"/>
@@ -85,8 +112,15 @@ export default function HistoryPage() {
                   {new Date(ticket.issuedAt).toLocaleDateString('en-IN')}
                 </span>
               </div>
-            </div>))}
+            </button>))}
         </div>
+        {!loading && filteredTickets.length > 0 && (
+          <div className="mt-5 flex items-center justify-between">
+            <button disabled={page === 1} onClick={() => setPage((current) => current - 1)} className="rounded-lg border bg-white px-3 py-2 text-sm disabled:opacity-40">Previous</button>
+            <span className="text-sm text-gray-500">Page {page} of {pageCount}</span>
+            <button disabled={page >= pageCount} onClick={() => setPage((current) => current + 1)} className="rounded-lg border bg-white px-3 py-2 text-sm disabled:opacity-40">Next</button>
+          </div>
+        )}
       </div>
     </div>);
 }

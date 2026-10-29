@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useRequireRole } from '@/lib/use-require-role';
 import api from '@/lib/api';
 import Cookies from 'js-cookie';
 import { User, Lock, Phone, Save, ArrowLeft } from 'lucide-react';
@@ -9,7 +9,7 @@ import Toast from '@/components/admin/Toast';
 import Link from 'next/link';
 export default function ProfilePage() {
     const { user, login } = useAuth();
-    const router = useRouter();
+    const { isAuthorized } = useRequireRole();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -23,8 +23,7 @@ export default function ProfilePage() {
         user?.role === 'CONDUCTOR' ? '/conductor' :
             user?.role === 'SUPERVISOR' ? '/supervisor' : '/traveler';
     useEffect(() => {
-        if (!user) {
-            router.push('/login');
+        if (!isAuthorized) {
             return;
         }
         api.get('/auth/me')
@@ -35,7 +34,7 @@ export default function ProfilePage() {
         })
             .catch(() => setToast({ type: 'error', message: 'Could not load profile.' }))
             .finally(() => setLoading(false));
-    }, [user, router]);
+    }, [isAuthorized, user]);
     const handleSave = async (e) => {
         e.preventDefault();
         if (newPassword && newPassword !== confirmPassword) {

@@ -1,23 +1,9 @@
 'use client';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/admin/Sidebar';
-import { useAuth } from '@/lib/auth-context';
+import { useRequireRole } from '@/lib/use-require-role';
 export default function AdminLayout({ children }) {
-    const router = useRouter();
-    const { user, isLoading } = useAuth();
-    useEffect(() => {
-        if (isLoading)
-            return;
-        if (!user) {
-            router.replace('/login');
-            return;
-        }
-        if (user.role !== 'ADMIN') {
-            router.replace('/');
-        }
-    }, [user, isLoading, router]);
-    if (isLoading || !user || user.role !== 'ADMIN') {
+    const { isAuthorized } = useRequireRole('ADMIN');
+    if (!isAuthorized) {
         return <div className="min-h-screen bg-slate-100"/>;
     }
     return (<div className="min-h-screen bg-slate-100 md:flex">
