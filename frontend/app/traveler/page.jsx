@@ -1,111 +1,57 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { Bus, CreditCard, CheckCircle, Home } from 'lucide-react';
-export default function TicketPage() {
-    const { user } = useAuth();
+import { Bus, QrCode, Search, Clock, User, LogOut, ChevronRight } from 'lucide-react';
+
+const actions = [
+    { href: '/traveler/qr', label: 'Scan Bus QR', desc: 'Board a bus and get your ticket', icon: QrCode },
+    { href: '/traveler/search', label: 'Find Route or Stop', desc: 'Search destinations and routes', icon: Search },
+    { href: '/traveler/active', label: 'Active Trip', desc: 'See your current journey', icon: Bus },
+    { href: '/traveler/history', label: 'Trip History', desc: 'Your past tickets', icon: Clock },
+    { href: '/profile', label: 'Profile', desc: 'Account details', icon: User },
+];
+
+export default function TravelerHomePage() {
+    const { user, logout, isLoading } = useAuth();
     const router = useRouter();
-    const [ticket, setTicket] = useState(null);
+
     useEffect(() => {
-        if (!user) {
-            router.push('/login');
-            return;
-        }
-        const stored = localStorage.getItem('issuedTicket');
-        if (!stored) {
-            router.push('/traveler');
-            return;
-        }
-        setTicket(JSON.parse(stored));
-    }, [user, router]);
-    if (!ticket)
-        return null;
-    return (<div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center px-4 py-8">
-      <div className="w-full max-w-sm">
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-800 to-indigo-800 px-6 py-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Bus className="text-white w-5 h-5"/>
-                <span className="text-white font-bold">{ticket.busNumber}</span>
-              </div>
-              <span className="bg-green-400 text-green-900 text-xs font-bold px-3 py-1 rounded-full">
-                VALID
-              </span>
-            </div>
-            <p className="text-blue-200 text-xs">{ticket.routeName}</p>
+        if (isLoading) return;
+        if (!user || user.role !== 'TRAVELER') router.replace('/login');
+    }, [user, isLoading, router]);
+
+    if (isLoading || !user) {
+        return (<div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"/>
+        </div>);
+    }
+
+    return (<div className="min-h-screen bg-gray-50">
+      <div className="bg-gradient-to-r from-blue-800 to-indigo-800 px-6 pt-12 pb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-blue-200 text-sm">Welcome</p>
+            <h1 className="text-white text-2xl font-bold">{user.name}</h1>
           </div>
-
-          <div className="px-6 py-5">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="flex flex-col items-center gap-1 mt-1">
-                <div className="w-3 h-3 bg-green-500 rounded-full"/>
-                <div className="w-0.5 h-8 bg-gray-300"/>
-                <div className="w-3 h-3 bg-red-500 rounded-full"/>
-              </div>
-              <div className="flex flex-col gap-4">
-                <div>
-                  <p className="text-xs text-gray-400">FROM</p>
-                  <p className="font-bold text-gray-800">{ticket.boardingStop}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400">TO</p>
-                  <p className="font-bold text-gray-800">{ticket.destinationStop}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-5">
-              <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">Fare</p>
-                <p className="font-bold text-gray-800 text-lg">₹{ticket.fare}</p>
-              </div>
-              <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">Payment</p>
-                <div className="flex items-center gap-1">
-                  <CreditCard className="w-3 h-3 text-blue-600"/>
-                  <p className="font-bold text-gray-800 text-sm">{ticket.paymentMethod}</p>
-                </div>
-              </div>
-              <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">Passenger</p>
-                <p className="font-semibold text-gray-800 text-sm truncate">{ticket.traveler?.name}</p>
-              </div>
-              <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">Issued At</p>
-                <p className="font-semibold text-gray-800 text-sm">
-                  {new Date(ticket.issuedAt).toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit',
-        })}
-                </p>
-              </div>
-            </div>
-
-            <div className="border-t-2 border-dashed border-gray-200 my-4"/>
-
-            <div className="flex flex-col items-center">
-              <p className="text-xs text-gray-400 mb-3">Supervisor Verification QR</p>
-              {ticket.qrCodeImage && (<img src={ticket.qrCodeImage} alt="Verification QR" className="w-40 h-40"/>)}
-              <p className="text-xs text-gray-400 mt-2">Show this to the supervisor</p>
-            </div>
-          </div>
+          <button onClick={() => { logout(); router.push('/login'); }} className="text-blue-100 hover:text-white p-2" aria-label="Logout">
+            <LogOut className="w-5 h-5"/>
+          </button>
         </div>
+      </div>
 
-        <div className="flex items-center justify-center gap-2 mt-4 text-green-600">
-          <CheckCircle className="w-4 h-4"/>
-          <span className="text-sm font-semibold">Digitally Signed & Verified</span>
-        </div>
-
-        <button onClick={() => {
-            localStorage.removeItem('activeSession');
-            localStorage.removeItem('issuedTicket');
-            router.push('/traveler');
-        }} className="w-full mt-4 flex items-center justify-center gap-2 bg-blue-800 text-white py-4 rounded-2xl font-bold">
-          <Home className="w-4 h-4"/>
-          Back to Home
-        </button>
+      <div className="px-4 py-6 max-w-md mx-auto space-y-3">
+        {actions.map(({ href, label, desc, icon: Icon }) => (<Link key={href} href={href} className="flex items-center gap-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
+              <Icon className="w-5 h-5 text-blue-700"/>
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-gray-800">{label}</p>
+              <p className="text-xs text-gray-500">{desc}</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-300"/>
+          </Link>))}
       </div>
     </div>);
 }
