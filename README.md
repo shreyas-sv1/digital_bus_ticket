@@ -1,100 +1,98 @@
-# 🎫 BMTC SmartTicket - Digital Bus Ticketing System
+<p align="center">
+  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+</p>
 
-[![Next.js](https://img.shields.io/badge/Frontend-Next.js%2014-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![NestJS](https://img.shields.io/badge/Backend-NestJS%2010-E0234E?style=flat-square&logo=nestjs)](https://nestjs.com/)
-[![Prisma](https://img.shields.io/badge/ORM-Prisma-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
-[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
+[circleci-url]: https://circleci.com/gh/nestjs/nest
 
-A modern, robust, and scalable digital bus ticketing solution designed for BMTC. This system streamlines the process of issuing, validating, and managing bus tickets using QR codes and real-time payment integration.
+  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
+    <p align="center">
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
+<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
+<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
+<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
+<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
+  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
+    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
+  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+</p>
+  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
+  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-![BMTC SmartTicket Mockup](assets/mockup.png)
+## Description
 
-## 🌟 Key Features
+[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
--   **Multi-Role Access Control**:
-    -   **Traveler**: Search routes, buy tickets (Cash/Online), and view digital ticket history.
-    -   **Conductor**: Issue tickets on-the-go and manage passenger payments.
-    -   **Supervisor**: Verify ticket validity via QR code scanning.
-    -   **Admin**: Comprehensive dashboard for managing buses, routes, schedules, and monitoring fraud.
--   **QR-Based Ticketing**: Instant ticket generation and secure scanning/verification.
--   **Seamless Payments**: Integration with **Razorpay** for online transactions and a robust system for tracking cash payments.
--   **Real-Time Updates**: Powered by **Socket.io** for instant status updates and notifications.
--   **Fraud Detection**: Built-in mechanisms to detect and prevent ticket duplication or unauthorized use.
+## Project setup
 
-## 🚀 Tech Stack
-
-### Frontend
--   **Framework**: Next.js 14 (App Router)
--   **Styling**: Tailwind CSS
--   **State Management**: React Hooks
--   **Icons**: Lucide React
--   **QR Scanning**: `html5-qrcode`
-
-### Backend
--   **Framework**: NestJS
--   **Database**: PostgreSQL
--   **ORM**: Prisma
--   **Real-time**: Socket.io
--   **Payments**: Razorpay Node SDK
--   **Authentication**: JWT & Passport
-
-## 🛠️ Project Structure
-
-```text
-├── backend/            # NestJS API
-│   ├── prisma/         # Database schema & migrations
-│   ├── src/            # Backend logic (Modules, Services, Controllers)
-│   └── ...
-├── frontend/           # Next.js Application
-│   ├── app/            # App Router pages
-│   ├── components/     # UI Components
-│   ├── lib/            # Utilities & Axios config
-│   └── ...
-├── assets/             # Images & static assets
-└── DEPLOYMENT.md       # Detailed deployment instructions
+```bash
+$ npm install
 ```
 
-## 🚥 Getting Started
+## Compile and run the project
 
-### Prerequisites
--   Node.js (v18+)
--   PostgreSQL
--   npm or yarn
+```bash
+# development
+$ npm run start
 
-### Installation
+# watch mode
+$ npm run start:dev
 
-1.  **Clone the Repository**:
-    ```bash
-    git clone https://github.com/shreyas-sv1/digital_bus_ticket.git
-    cd digital_bus_ticket
-    ```
+# production mode
+$ npm run start:prod
+```
 
-2.  **Backend Setup**:
-    ```bash
-    cd backend
-    npm install
-    cp .env.example .env # Configure your database & Razorpay keys
-    npx prisma migrate dev
-    npm run start:dev
-    ```
+## Run tests
 
-3.  **Frontend Setup**:
-    ```bash
-    cd ../frontend
-    npm install
-    cp .env.example .env.local # Configure your API & Socket URLs
-    npm run dev
-    ```
+```bash
+# unit tests
+$ npm run test
 
-## 📦 Deployment
+# e2e tests
+$ npm run test:e2e
 
-Refer to the [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions on deploying the backend to **Railway** and the frontend to **Vercel**.
+# test coverage
+$ npm run test:cov
+```
 
-## 🤝 Contributing
+## Deployment
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
 
-## 📄 License
+If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
 
-This project is licensed under the MIT License.
+```bash
+$ npm install -g @nestjs/mau
+$ mau deploy
+```
+
+With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+
+## Resources
+
+Check out a few resources that may come in handy when working with NestJS:
+
+- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
+- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
+- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
+- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
+- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
+- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
+- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
+- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+
+## Support
+
+Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+
+## Stay in touch
+
+- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
+- Website - [https://nestjs.com](https://nestjs.com/)
+- Twitter - [@nestframework](https://twitter.com/nestframework)
+
+## License
+
+Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

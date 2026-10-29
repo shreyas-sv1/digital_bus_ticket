@@ -9,6 +9,7 @@ import { GenerateCashTicketDto } from './dto/generate-cash-ticket.dto';
 import { SetPaymentMethodDto } from './dto/set-payment-method.dto';
 import { PaymentsService } from '../payments/payments.service';
 import { SocketGateway } from '../socket/socket.gateway';
+import { FareService } from '../routes/fare.service';
 import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
 
@@ -18,6 +19,7 @@ export class TicketsService {
     private prisma: PrismaService,
     private paymentsService: PaymentsService,
     private socketGateway: SocketGateway,
+    private fareService: FareService,
   ) {}
 
   // ─── Conductor: Approve Session ───────────────────────────────────────────
@@ -25,7 +27,7 @@ export class TicketsService {
     const session = await this.prisma.travelSession.findUnique({
       where: { id: sessionId },
       include: {
-        bus: true,
+        bus: { include: { route: true } },
         traveler: { select: { id: true, name: true, phone: true } },
         boardingStop: true,
         destinationStop: true,
@@ -38,12 +40,35 @@ export class TicketsService {
     if (session.bus.conductorId !== conductorId)
       throw new ForbiddenException('You are not the conductor of this bus');
 
+    // If already approved, just return current data (idempotent)
+    if (session.status === 'APPROVED') {
+      const fare = await this.calculateFare(
+        session.bus.routeId,
+        session.boardingStop.stopOrder,
+        session.destinationStop.stopOrder,
+      );
+      return {
+        sessionId: session.id,
+        status: session.status,
+        traveler: session.traveler,
+        bus: {
+          busNumber: session.bus.busNumber,
+          routeName: session.bus.route.routeName,
+        },
+        boardingStop: session.boardingStop.stopName,
+        destinationStop: session.destinationStop.stopName,
+        fare,
+      };
+    }
+
     if (session.status !== 'PENDING')
       throw new BadRequestException(`Session is already ${session.status}`);
 
     // Check QR expiry
     if (new Date() > session.qrExpiresAt)
-      throw new BadRequestException('QR code has expired. Ask traveler to refresh.');
+      throw new BadRequestException(
+        'QR code has expired. Ask traveler to refresh.',
+      );
 
     const updated = await this.prisma.travelSession.update({
       where: { id: sessionId },
@@ -56,12 +81,18 @@ export class TicketsService {
       },
     });
 
-    // Calculate fare
-    const fare = await this.calculateFare(
+    // Calculate fare via shared FareService
+    const fare = await this.fareService.calculateFare(
       updated.bus.routeId,
       updated.boardingStop.stopOrder,
       updated.destinationStop.stopOrder,
     );
+
+    // Emit session approved to traveler in real-time
+    this.socketGateway.emitSessionApproved(sessionId, {
+      sessionId,
+      status: 'APPROVED',
+    });
 
     return {
       sessionId: updated.id,
@@ -78,7 +109,11 @@ export class TicketsService {
   }
 
   // ─── Conductor: Set Payment Method ────────────────────────────────────────
-  async setPaymentMethod(conductorId: string, sessionId: string, dto: SetPaymentMethodDto) {
+  async setPaymentMethod(
+    conductorId: string,
+    sessionId: string,
+    dto: SetPaymentMethodDto,
+  ) {
     const session = await this.prisma.travelSession.findUnique({
       where: { id: sessionId },
       include: { bus: true },
@@ -88,7 +123,9 @@ export class TicketsService {
     if (session.bus.conductorId !== conductorId)
       throw new ForbiddenException('You are not the conductor of this bus');
     if (session.status !== 'APPROVED')
-      throw new BadRequestException('Session must be approved before setting payment method');
+      throw new BadRequestException(
+        'Session must be approved before setting payment method',
+      );
 
     return {
       sessionId,
@@ -117,12 +154,15 @@ export class TicketsService {
     if (session.bus.conductorId !== conductorId)
       throw new ForbiddenException('You are not the conductor of this bus');
     if (session.status !== 'APPROVED')
-      throw new BadRequestException('Session must be approved before generating ticket');
+      throw new BadRequestException(
+        'Session must be approved before generating ticket',
+      );
     if (session.ticket)
       throw new BadRequestException('Ticket already issued for this session');
 
     // Calculate fare
-    const fare = await this.calculateFare(
+    // Calculate fare via shared FareService
+    const fare = await this.fareService.calculateFare(
       session.bus.routeId,
       session.boardingStop.stopOrder,
       session.destinationStop.stopOrder,
@@ -263,7 +303,7 @@ export class TicketsService {
       take: 20,
     });
 
-    return tickets.map((t) => ({
+    return tickets.map((t: any) => ({
       id: t.id,
       busNumber: t.bus.busNumber,
       routeName: t.bus.route.routeName,
@@ -294,11 +334,18 @@ export class TicketsService {
     });
 
     const totalTickets = tickets.length;
-    const totalRevenue = tickets.reduce((sum: number, t) => sum + t.fare, 0);
-    const cashTickets = tickets.filter((t) => t.paymentMethod === 'CASH').length;
-    const onlineTickets = tickets.filter((t) => t.paymentMethod === 'ONLINE').length;
+    const totalRevenue = tickets.reduce(
+      (sum: number, t: any) => sum + t.fare,
+      0,
+    );
+    const cashTickets = tickets.filter(
+      (t: any) => t.paymentMethod === 'CASH',
+    ).length;
+    const onlineTickets = tickets.filter(
+      (t: any) => t.paymentMethod === 'ONLINE',
+    ).length;
     const cashRevenue = tickets
-      .filter((t) => t.paymentMethod === 'CASH')
+      .filter((t: any) => t.paymentMethod === 'CASH')
       .reduce((sum: number, t: any) => sum + t.fare, 0);
     const onlineRevenue = tickets
       .filter((t: any) => t.paymentMethod === 'ONLINE')
@@ -326,14 +373,22 @@ export class TicketsService {
   }
 
   // ─── Helper: Calculate Fare ────────────────────────────────────────────────
-  async calculateFare(routeId: string, fromStopOrder: number, toStopOrder: number) {
+  async calculateFare(
+    routeId: string,
+    fromStopOrder: number,
+    toStopOrder: number,
+  ) {
     const exactFare = await this.prisma.fare.findFirst({
       where: { routeId, fromStopOrder, toStopOrder },
     });
     if (exactFare) return exactFare.amount;
 
-    const fromStop = await this.prisma.stop.findFirst({ where: { routeId, stopOrder: fromStopOrder } });
-    const toStop = await this.prisma.stop.findFirst({ where: { routeId, stopOrder: toStopOrder } });
+    const fromStop = await this.prisma.stop.findFirst({
+      where: { routeId, stopOrder: fromStopOrder },
+    });
+    const toStop = await this.prisma.stop.findFirst({
+      where: { routeId, stopOrder: toStopOrder },
+    });
     if (!fromStop || !toStop) return 10;
 
     const distance = toStop.distanceFromStart - fromStop.distanceFromStart;
@@ -360,7 +415,8 @@ export class TicketsService {
     if (session.ticket)
       throw new BadRequestException('Ticket already issued for this session');
 
-    const fare = await this.calculateFare(
+    // Calculate fare via shared FareService
+    const fare = await this.fareService.calculateFare(
       session.bus.routeId,
       session.boardingStop.stopOrder,
       session.destinationStop.stopOrder,
@@ -388,8 +444,18 @@ export class TicketsService {
         paymentStatus: 'PENDING',
         razorpayOrderId: order.orderId,
         signedQRCode: `PENDING_${ticketId}`, // unique placeholder
-
       },
+    });
+
+    // Emit payment request to traveler so they can pay on their device
+    this.socketGateway.emitOnlinePaymentRequest(sessionId, {
+      orderId: order.orderId,
+      amount: order.amount as number,
+      currency: order.currency,
+      keyId: order.keyId,
+      fare,
+      sessionId,
+      ticketId,
     });
 
     return {
@@ -436,29 +502,14 @@ export class TicketsService {
     const { signedQRData, qrCodeImage } = await this.generateSignedQR(ticket);
 
     // Update ticket — mark as paid and add signed QR
-    const result = await this.prisma.ticket.updateMany({
-      where: {
-        id: ticket.id,
-        paymentStatus: 'PENDING',
-      },
+    const updatedTicket = await this.prisma.ticket.update({
+      where: { id: ticket.id },
       data: {
         paymentStatus: 'PAID',
         razorpayPaymentId,
         signedQRCode: signedQRData,
       },
     });
-
-    if (result.count === 0) {
-      return {
-        message: 'Payment already processed',
-      };
-    }
-
-    const updatedTicket = await this.prisma.ticket.findUnique({
-      where: { id: ticket.id },
-    });
-
-    if (!updatedTicket) throw new NotFoundException('Ticket not found');
 
     // Update session status
     await this.prisma.travelSession.update({
@@ -489,7 +540,10 @@ export class TicketsService {
 
   // ─── Razorpay Webhook Handler ──────────────────────────────────────────────
   async handleRazorpayWebhook(body: string, signature: string) {
-    const isValid = this.paymentsService.verifyWebhookSignature(body, signature);
+    const isValid = this.paymentsService.verifyWebhookSignature(
+      body,
+      signature,
+    );
     if (!isValid) throw new BadRequestException('Invalid webhook signature');
 
     const event = JSON.parse(body);
@@ -520,27 +574,14 @@ export class TicketsService {
       const { signedQRData, qrCodeImage } = await this.generateSignedQR(ticket);
 
       // Update ticket
-      const result = await this.prisma.ticket.updateMany({
-        where: {
-          id: ticket.id,
-          paymentStatus: 'PENDING',
-        },
+      const updatedTicket = await this.prisma.ticket.update({
+        where: { id: ticket.id },
         data: {
           paymentStatus: 'PAID',
           razorpayPaymentId: paymentId,
           signedQRCode: signedQRData,
         },
       });
-
-      if (result.count === 0) {
-        return { status: 'already processed' };
-      }
-
-      const updatedTicket = await this.prisma.ticket.findUnique({
-        where: { id: ticket.id },
-      });
-
-      if (!updatedTicket) return { status: 'error' };
 
       // Update session
       await this.prisma.travelSession.update({
@@ -569,6 +610,8 @@ export class TicketsService {
 
   // ─── Helper: Generate Signed QR ───────────────────────────────────────────
   private async generateSignedQR(ticket: any) {
+    // Use the ticket's persisted issuedAt so the QR payload always matches
+    // the DB row — important for replay-checks after Razorpay verification.
     const payload = JSON.stringify({
       ticketId: ticket.id,
       travelerId: ticket.travelerId,
@@ -576,7 +619,10 @@ export class TicketsService {
       boardingStop: ticket.boardingStop,
       destinationStop: ticket.destinationStop,
       fare: ticket.fare,
-      issuedAt: new Date().toISOString(),
+      issuedAt: (ticket.issuedAt instanceof Date
+        ? ticket.issuedAt
+        : new Date(ticket.issuedAt)
+      ).toISOString(),
     });
 
     if (!process.env.QR_SIGN_SECRET) {

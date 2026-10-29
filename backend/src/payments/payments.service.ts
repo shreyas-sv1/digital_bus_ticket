@@ -32,7 +32,10 @@ export class PaymentsService {
 
   verifyWebhookSignature(body: string, signature: string): boolean {
     const expectedSignature = crypto
-      .createHmac('sha256', this.config.get('RAZORPAY_WEBHOOK_SECRET') || 'fake_webhook_secret')
+      .createHmac(
+        'sha256',
+        this.config.get('RAZORPAY_WEBHOOK_SECRET') || 'fake_webhook_secret',
+      )
       .update(body)
       .digest('hex');
 
@@ -46,7 +49,10 @@ export class PaymentsService {
   ): boolean {
     const body = `${orderId}|${paymentId}`;
     const expectedSignature = crypto
-      .createHmac('sha256', this.config.get('RAZORPAY_KEY_SECRET') || 'fake_secret')
+      .createHmac(
+        'sha256',
+        this.config.get('RAZORPAY_KEY_SECRET') || 'fake_secret',
+      )
       .update(body)
       .digest('hex');
 

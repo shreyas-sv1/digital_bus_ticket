@@ -38,13 +38,15 @@ enum VerificationResult {
 }
 
 model User {
-  id                String    @id @default(uuid())
-  name              String
-  email             String    @unique
-  phone             String    @unique
-  password          String
-  role              Role      @default(TRAVELER)
-  createdAt         DateTime  @default(now())
+  id                   String    @id @default(uuid())
+  name                 String
+  email                String    @unique
+  phone                String    @unique
+  password             String
+  role                 Role      @default(TRAVELER)
+  createdAt            DateTime  @default(now())
+  resetToken           String?
+  resetTokenExpiresAt  DateTime?
 
   travelSessions    TravelSession[] @relation("TravelerSessions")
   travelerTickets   Ticket[]        @relation("TravelerTickets")

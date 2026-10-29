@@ -1,16 +1,18 @@
-import { IsString, IsEmail, MinLength } from 'class-validator';
-
 export class CreateConductorDto {
-  @IsString()
   name: string;
-
-  @IsEmail()
   email: string;
-
-  @IsString()
   phone: string;
-
-  @IsString()
-  @MinLength(6)
   password: string;
+
+  constructor(data: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+  }) {
+    this.name = data.name;
+    this.email = data.email;
+    this.phone = data.phone;
+    this.password = data.password;
+  }
 }

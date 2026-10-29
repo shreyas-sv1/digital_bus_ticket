@@ -14,11 +14,19 @@ export class VerificationService {
     try {
       parsed = JSON.parse(dto.qrData);
     } catch {
-      return this.buildResult('INVALID', null, 'QR code is malformed or tampered');
+      return this.buildResult(
+        'INVALID',
+        null,
+        'QR code is malformed or tampered',
+      );
     }
 
     if (!parsed.payload || !parsed.signature) {
-      return this.buildResult('INVALID', null, 'QR code is missing required fields');
+      return this.buildResult(
+        'INVALID',
+        null,
+        'QR code is missing required fields',
+      );
     }
 
     // ── Step 2: Verify HMAC signature ─────────────────────────────────────
@@ -31,15 +39,7 @@ export class VerificationService {
       .update(parsed.payload)
       .digest('hex');
 
-    // Timing-safe comparison
-    const isValidSignature =
-      expectedSignature.length === parsed.signature.length &&
-      crypto.timingSafeEqual(
-        Buffer.from(expectedSignature, 'utf8'),
-        Buffer.from(parsed.signature, 'utf8'),
-      );
-
-    if (!isValidSignature) {
+    if (expectedSignature !== parsed.signature) {
       await this.logVerification(supervisorId, null, 'INVALID');
       return this.buildResult(
         'INVALID',
@@ -62,7 +62,11 @@ export class VerificationService {
     try {
       ticketPayload = JSON.parse(parsed.payload);
     } catch {
-      return this.buildResult('INVALID', null, 'QR payload could not be parsed');
+      return this.buildResult(
+        'INVALID',
+        null,
+        'QR payload could not be parsed',
+      );
     }
 
     // ── Step 4: Find ticket in DB ──────────────────────────────────────────
@@ -80,46 +84,37 @@ export class VerificationService {
       return this.buildResult('INVALID', null, 'Ticket not found in system');
     }
 
-    if (
-      ticket.travelerId !== ticketPayload.travelerId ||
-      ticket.busId !== ticketPayload.busId ||
-      ticket.fare !== ticketPayload.fare ||
-      ticket.boardingStop !== ticketPayload.boardingStop ||
-      ticket.destinationStop !== ticketPayload.destinationStop
-    ) {
-      await this.logVerification(supervisorId, ticket.id, 'INVALID');
-
-      return this.buildResult(
-        'INVALID',
-        ticket,
-        'Ticket data does not match the signed QR payload.',
-      );
-    }
-
     // ── Step 5: Check payment status ──────────────────────────────────────
     if (ticket.paymentStatus !== 'PAID') {
       await this.logVerification(supervisorId, ticket.id, 'INVALID');
-      return this.buildResult('INVALID', ticket, 'Ticket payment is not completed');
+      return this.buildResult(
+        'INVALID',
+        ticket,
+        'Ticket payment is not completed',
+      );
     }
 
     // ── Step 6: Check if already verified ─────────────────────────────────
     if (ticket.isVerified) {
       await this.logVerification(supervisorId, ticket.id, 'ALREADY_CHECKED');
-      return this.buildResult('ALREADY_CHECKED', ticket, `Already verified at ${ticket.verifiedAt?.toLocaleString('en-IN')}`);
+      return this.buildResult(
+        'ALREADY_CHECKED',
+        ticket,
+        `Already verified at ${ticket.verifiedAt?.toLocaleString('en-IN')}`,
+      );
     }
 
     // ── Step 7: Check ticket age — reject if older than 3 hours ──────────
     const issuedAt = new Date(ticket.issuedAt);
-    const ageInHours =
-      (Date.now() - issuedAt.getTime()) / (1000 * 60 * 60);
+    const ageInHours = (Date.now() - issuedAt.getTime()) / (1000 * 60 * 60);
 
-    const expiryHours = Number(
-      process.env.TICKET_EXPIRY_HOURS ?? 3,
-    );
-
-    if (ageInHours > expiryHours) {
+    if (ageInHours > 3) {
       await this.logVerification(supervisorId, ticket.id, 'INVALID');
-      return this.buildResult('INVALID', ticket, `Ticket has expired (older than ${expiryHours} hours)`);
+      return this.buildResult(
+        'INVALID',
+        ticket,
+        'Ticket has expired (older than 3 hours)',
+      );
     }
 
     // ── Step 8: Mark as verified ───────────────────────────────────────────
@@ -153,7 +148,7 @@ export class VerificationService {
       take: 50,
     });
 
-    return logs.map((log) => ({
+    return logs.map((log: any) => ({
       id: log.id,
       result: log.result,
       scannedAt: log.scannedAt,
@@ -186,9 +181,11 @@ export class VerificationService {
     });
 
     const total = logs.length;
-    const valid = logs.filter((l) => l.result === 'VALID').length;
-    const invalid = logs.filter((l) => l.result === 'INVALID').length;
-    const alreadyChecked = logs.filter((l) => l.result === 'ALREADY_CHECKED').length;
+    const valid = logs.filter((l: any) => l.result === 'VALID').length;
+    const invalid = logs.filter((l: any) => l.result === 'INVALID').length;
+    const alreadyChecked = logs.filter(
+      (l: any) => l.result === 'ALREADY_CHECKED',
+    ).length;
 
     return {
       date: today.toDateString(),

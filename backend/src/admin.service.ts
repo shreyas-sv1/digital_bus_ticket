@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { CreateConductorDto } from './dto/create-conductor.dto';
@@ -24,9 +28,17 @@ export class AdminService {
       activeBuses,
     ] = await Promise.all([
       this.prisma.ticket.count({ where: { paymentStatus: 'PAID' } }),
-      this.prisma.ticket.count({ where: { paymentStatus: 'PAID', issuedAt: { gte: today } } }),
-      this.prisma.ticket.aggregate({ where: { paymentStatus: 'PAID' }, _sum: { fare: true } }),
-      this.prisma.ticket.aggregate({ where: { paymentStatus: 'PAID', issuedAt: { gte: today } }, _sum: { fare: true } }),
+      this.prisma.ticket.count({
+        where: { paymentStatus: 'PAID', issuedAt: { gte: today } },
+      }),
+      this.prisma.ticket.aggregate({
+        where: { paymentStatus: 'PAID' },
+        _sum: { fare: true },
+      }),
+      this.prisma.ticket.aggregate({
+        where: { paymentStatus: 'PAID', issuedAt: { gte: today } },
+        _sum: { fare: true },
+      }),
       this.prisma.ticket.aggregate({
         where: { paymentStatus: 'PAID', paymentMethod: 'CASH' },
         _sum: { fare: true },
@@ -36,14 +48,24 @@ export class AdminService {
         _sum: { fare: true },
       }),
       this.prisma.ticket.aggregate({
-        where: { paymentStatus: 'PAID', paymentMethod: 'CASH', issuedAt: { gte: today } },
+        where: {
+          paymentStatus: 'PAID',
+          paymentMethod: 'CASH',
+          issuedAt: { gte: today },
+        },
         _sum: { fare: true },
       }),
       this.prisma.ticket.aggregate({
-        where: { paymentStatus: 'PAID', paymentMethod: 'ONLINE', issuedAt: { gte: today } },
+        where: {
+          paymentStatus: 'PAID',
+          paymentMethod: 'ONLINE',
+          issuedAt: { gte: today },
+        },
         _sum: { fare: true },
       }),
-      this.prisma.verificationLog.count({ where: { result: 'INVALID', scannedAt: { gte: today } } }),
+      this.prisma.verificationLog.count({
+        where: { result: 'INVALID', scannedAt: { gte: today } },
+      }),
       this.prisma.bus.count({ where: { isActive: true } }),
     ]);
 
@@ -72,14 +94,27 @@ export class AdminService {
       invalidScansToday: invalidScans,
       activeBuses,
       trends: {
-        invalidRateToday: todayTickets > 0 ? Number(((invalidScans / todayTickets) * 100).toFixed(2)) : 0,
+        invalidRateToday:
+          todayTickets > 0
+            ? Number(((invalidScans / todayTickets) * 100).toFixed(2))
+            : 0,
         cashShareToday:
           todayRevenueValue > 0
-            ? Number((((todayCashRevenue._sum.fare || 0) / todayRevenueValue) * 100).toFixed(2))
+            ? Number(
+                (
+                  ((todayCashRevenue._sum.fare || 0) / todayRevenueValue) *
+                  100
+                ).toFixed(2),
+              )
             : 0,
         onlineShareToday:
           todayRevenueValue > 0
-            ? Number((((todayOnlineRevenue._sum.fare || 0) / todayRevenueValue) * 100).toFixed(2))
+            ? Number(
+                (
+                  ((todayOnlineRevenue._sum.fare || 0) / todayRevenueValue) *
+                  100
+                ).toFixed(2),
+              )
             : 0,
       },
     };
@@ -89,7 +124,20 @@ export class AdminService {
     return this.prisma.bus.findMany({
       include: {
         route: true,
-        conductor: { select: { id: true, name: true, email: true, phone: true } },
+        conductor: {
+          select: { id: true, name: true, email: true, phone: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getRoutes() {
+    return this.prisma.route.findMany({
+      include: {
+        stops: { orderBy: { stopOrder: 'asc' } },
+        fares: { orderBy: [{ fromStopOrder: 'asc' }, { toStopOrder: 'asc' }] },
+        buses: { select: { id: true, busNumber: true, isActive: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -121,28 +169,73 @@ export class AdminService {
   }
 
   async createConductor(dto: CreateConductorDto) {
+    return this.createStaffUser(dto, 'CONDUCTOR');
+  }
+
+  /**
+   * Generic staff account creation used by createConductor and the
+   * supervisor/admin management endpoints.
+   */
+  async createStaffUser(
+    dto: CreateConductorDto,
+    role: 'CONDUCTOR' | 'SUPERVISOR' | 'ADMIN',
+  ) {
     const existing = await this.prisma.user.findFirst({
       where: { OR: [{ email: dto.email }, { phone: dto.phone }] },
     });
-    if (existing) throw new ConflictException('Email or phone already registered');
+    if (existing)
+      throw new ConflictException('Email or phone already registered');
 
     const hashedPassword = await bcrypt.hash(dto.password, 12);
-    const conductor = await this.prisma.user.create({
+    return this.prisma.user.create({
       data: {
         name: dto.name,
         email: dto.email,
         phone: dto.phone,
         password: hashedPassword,
-        role: 'CONDUCTOR',
+        role,
       },
-      select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+      },
     });
+  }
 
-    return conductor;
+  /** Returns all non-traveler users, optionally filtered by role. */
+  async getStaffUsers(role?: 'CONDUCTOR' | 'SUPERVISOR' | 'ADMIN') {
+    return this.prisma.user.findMany({
+      where: { role: role ?? { in: ['CONDUCTOR', 'SUPERVISOR', 'ADMIN'] } },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  /** Permanently removes a staff user account (cannot delete TRAVELER via this path). */
+  async deleteUser(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role === 'TRAVELER') {
+      throw new NotFoundException('Staff user not found');
+    }
+    await this.prisma.user.delete({ where: { id: userId } });
+    return { success: true };
   }
 
   async unassignConductor(conductorId: string) {
-    const conductor = await this.prisma.user.findUnique({ where: { id: conductorId } });
+    const conductor = await this.prisma.user.findUnique({
+      where: { id: conductorId },
+    });
     if (!conductor || conductor.role !== 'CONDUCTOR') {
       throw new NotFoundException('Conductor not found');
     }
@@ -155,7 +248,12 @@ export class AdminService {
     return { success: true };
   }
 
-  async getFraudReport(startDate?: string, endDate?: string) {
+  async getFraudReport(
+    startDate?: string,
+    endDate?: string,
+    cursor?: string,
+    pageSize = 50,
+  ) {
     const scannedAtFilter: { gte?: Date; lte?: Date } = {};
     if (startDate) scannedAtFilter.gte = new Date(startDate);
     if (endDate) {
@@ -164,11 +262,20 @@ export class AdminService {
       scannedAtFilter.lte = end;
     }
 
+    const where = {
+      result: 'INVALID' as const,
+      scannedAt: Object.keys(scannedAtFilter).length
+        ? scannedAtFilter
+        : undefined,
+    };
+
+    // Total count for the filter (independent of current page)
+    const totalInvalidScans = await this.prisma.verificationLog.count({
+      where,
+    });
+
     const logs = await this.prisma.verificationLog.findMany({
-      where: {
-        result: 'INVALID',
-        scannedAt: Object.keys(scannedAtFilter).length ? scannedAtFilter : undefined,
-      },
+      where,
       include: {
         supervisor: { select: { name: true } },
         ticket: {
@@ -179,19 +286,103 @@ export class AdminService {
         },
       },
       orderBy: { scannedAt: 'desc' },
-      take: 500,
+      take: pageSize + 1, // fetch one extra to detect next page
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
+    const hasNextPage = logs.length > pageSize;
+    const page = hasNextPage ? logs.slice(0, pageSize) : logs;
+    const nextCursor = hasNextPage ? page[page.length - 1].id : null;
+
     return {
-      totalInvalidScans: logs.length,
-      logs: logs.map((log: any) => ({
+      totalInvalidScans,
+      nextCursor,
+      logs: page.map((log: any) => ({
         id: log.id,
-      scannedAt: log.scannedAt,
-      supervisorName: log.supervisor.name,
-      ticketId: log.ticketId,
-      traveler: log.ticket?.traveler,
-      busNumber: log.ticket?.bus?.busNumber,
+        scannedAt: log.scannedAt,
+        supervisorName: (log.supervisor as { name: string }).name,
+        ticketId: log.ticketId,
+        traveler: log.ticket?.traveler as
+          | { name: string; phone: string }
+          | undefined,
+        busNumber: (log.ticket?.bus as { busNumber: string } | undefined)
+          ?.busNumber,
       })),
     };
+  }
+
+  /**
+   * Returns per-day analytics for the last 7 days.
+   * Each entry contains: date, totalRevenue, cashRevenue, onlineRevenue,
+   * ticketCount, and invalidScans.  Used by the admin dashboard charts.
+   */
+  async getAnalytics() {
+    const days: {
+      date: string;
+      totalRevenue: number;
+      cashRevenue: number;
+      onlineRevenue: number;
+      ticketCount: number;
+      invalidScans: number;
+    }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = new Date();
+      dayStart.setDate(dayStart.getDate() - i);
+      dayStart.setHours(0, 0, 0, 0);
+
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const [totalRev, cashRev, onlineRev, tickets, invalid] =
+        await Promise.all([
+          this.prisma.ticket.aggregate({
+            where: {
+              paymentStatus: 'PAID',
+              issuedAt: { gte: dayStart, lte: dayEnd },
+            },
+            _sum: { fare: true },
+          }),
+          this.prisma.ticket.aggregate({
+            where: {
+              paymentStatus: 'PAID',
+              paymentMethod: 'CASH',
+              issuedAt: { gte: dayStart, lte: dayEnd },
+            },
+            _sum: { fare: true },
+          }),
+          this.prisma.ticket.aggregate({
+            where: {
+              paymentStatus: 'PAID',
+              paymentMethod: 'ONLINE',
+              issuedAt: { gte: dayStart, lte: dayEnd },
+            },
+            _sum: { fare: true },
+          }),
+          this.prisma.ticket.count({
+            where: {
+              paymentStatus: 'PAID',
+              issuedAt: { gte: dayStart, lte: dayEnd },
+            },
+          }),
+          this.prisma.verificationLog.count({
+            where: {
+              result: 'INVALID',
+              scannedAt: { gte: dayStart, lte: dayEnd },
+            },
+          }),
+        ]);
+
+      days.push({
+        date: dayStart.toISOString().slice(0, 10),
+        totalRevenue: totalRev._sum.fare ?? 0,
+        cashRevenue: cashRev._sum.fare ?? 0,
+        onlineRevenue: onlineRev._sum.fare ?? 0,
+        ticketCount: tickets,
+        invalidScans: invalid,
+      });
+    }
+
+    return { days };
   }
 }

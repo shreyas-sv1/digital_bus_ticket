@@ -5,13 +5,17 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { FareService } from '../routes/fare.service';
 import { StartSessionDto } from './dto/start-session.dto';
-import { v4 as uuidv4 } from 'uuid';
+import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
 
 @Injectable()
 export class SessionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fareService: FareService,
+  ) {}
 
   async startSession(travelerId: string, dto: StartSessionDto) {
     // Validate bus exists and is active
@@ -24,7 +28,9 @@ export class SessionsService {
 
     // Validate stop orders
     if (dto.boardingStopOrder >= dto.destinationStopOrder)
-      throw new BadRequestException('Destination must be ahead of boarding stop');
+      throw new BadRequestException(
+        'Destination must be ahead of boarding stop',
+      );
 
     // Get boarding stop
     const boardingStop = await this.prisma.stop.findFirst({
@@ -36,7 +42,8 @@ export class SessionsService {
     const destinationStop = await this.prisma.stop.findFirst({
       where: { routeId: bus.routeId, stopOrder: dto.destinationStopOrder },
     });
-    if (!destinationStop) throw new NotFoundException('Destination stop not found');
+    if (!destinationStop)
+      throw new NotFoundException('Destination stop not found');
 
     // Cancel any existing PENDING session for this traveler on this bus
     await this.prisma.travelSession.updateMany({
@@ -49,7 +56,7 @@ export class SessionsService {
     });
 
     // Generate unique temp QR code string
-    const tempQRCode = uuidv4();
+    const tempQRCode = crypto.randomUUID();
     const qrExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     // Create session
@@ -71,8 +78,8 @@ export class SessionsService {
       },
     });
 
-    // Calculate fare
-    const fareData = await this.calculateFare(
+    // Calculate fare via shared FareService
+    const fareAmount = await this.fareService.calculateFare(
       bus.routeId,
       dto.boardingStopOrder,
       dto.destinationStopOrder,
@@ -97,7 +104,7 @@ export class SessionsService {
         },
         boardingStop: session.boardingStop.stopName,
         destinationStop: session.destinationStop.stopName,
-        fare: fareData.fare,
+        fare: fareAmount,
         traveler: session.traveler,
       },
       qrCodeImage, // base64 PNG — render directly in frontend
@@ -119,7 +126,9 @@ export class SessionsService {
 
     // Check expiry
     if (new Date() > session.qrExpiresAt)
-      throw new BadRequestException('QR code has expired. Ask traveler to generate a new one.');
+      throw new BadRequestException(
+        'QR code has expired. Ask traveler to generate a new one.',
+      );
 
     // Check status
     if (session.status === 'CANCELLED')
@@ -128,8 +137,8 @@ export class SessionsService {
     if (session.status === 'TICKET_ISSUED')
       throw new BadRequestException('Ticket already issued for this session');
 
-    // Calculate fare
-    const fareData = await this.calculateFare(
+    // Calculate fare via shared FareService
+    const fareAmount = await this.fareService.calculateFare(
       session.bus.routeId,
       session.boardingStop.stopOrder,
       session.destinationStop.stopOrder,
@@ -145,7 +154,7 @@ export class SessionsService {
       },
       boardingStop: session.boardingStop.stopName,
       destinationStop: session.destinationStop.stopName,
-      fare: fareData.fare,
+      fare: fareAmount,
       qrExpiresAt: session.qrExpiresAt,
     };
   }
@@ -210,7 +219,7 @@ export class SessionsService {
       throw new BadRequestException('Can only refresh QR for pending sessions');
 
     // Generate new QR
-    const tempQRCode = uuidv4();
+    const tempQRCode = crypto.randomUUID();
     const qrExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     const updated = await this.prisma.travelSession.update({
@@ -230,20 +239,42 @@ export class SessionsService {
     };
   }
 
-  // Helper: calculate fare
-  private async calculateFare(routeId: string, fromStopOrder: number, toStopOrder: number) {
-    const exactFare = await this.prisma.fare.findFirst({
-      where: { routeId, fromStopOrder, toStopOrder },
+  async getSessionStatus(userId: string, sessionId: string) {
+    const session = await this.prisma.travelSession.findFirst({
+      where: { id: sessionId, travelerId: userId },
+      include: {
+        ticket: true,
+      },
     });
-    if (exactFare) return { fare: exactFare.amount };
 
-    const fromStop = await this.prisma.stop.findFirst({ where: { routeId, stopOrder: fromStopOrder } });
-    const toStop = await this.prisma.stop.findFirst({ where: { routeId, stopOrder: toStopOrder } });
+    if (!session) throw new NotFoundException('Session not found');
 
-    if (!fromStop || !toStop) return { fare: 10 }; // fallback
+    const latestTicket = session.ticket;
 
-    const distance = toStop.distanceFromStart - fromStop.distanceFromStart;
-    const fare = Math.ceil(5 + distance * 1.5);
-    return { fare };
+    // Check if a ticket was issued
+    if (latestTicket) {
+      if (latestTicket.paymentStatus === 'PAID') {
+        return { status: 'issued', ticket: latestTicket };
+      }
+      if (
+        latestTicket.paymentMethod === 'ONLINE' &&
+        latestTicket.paymentStatus === 'PENDING'
+      ) {
+        return {
+          status: 'paying',
+          paymentOrder: {
+            ticketId: latestTicket.id,
+            amount: latestTicket.fare,
+            razorpayOrderId: latestTicket.razorpayOrderId,
+          },
+        };
+      }
+    }
+
+    if (session.status === 'APPROVED') {
+      return { status: 'approved' };
+    }
+
+    return { status: 'waiting' };
   }
 }

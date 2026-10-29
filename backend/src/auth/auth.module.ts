@@ -10,7 +10,5 @@ import { PrismaModule } from '../prisma/prisma.module';
   providers: [AuthService, JwtStrategy],
 })
 export class AuthModule {
-  constructor() {
-
-  }
+  constructor() {}
 }

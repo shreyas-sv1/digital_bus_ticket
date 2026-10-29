@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { RoutesService } from './routes.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { CreateStopDto } from './dto/create-stop.dto';
@@ -17,6 +25,12 @@ export class RoutesController {
     return this.routesService.getAllRoutes();
   }
 
+  /** Public search: find routes whose name or stops match a query string */
+  @Get('search')
+  searchRoutes(@Query('q') q: string) {
+    return this.routesService.searchRoutes(q ?? '');
+  }
+
   @Get(':id')
   getRouteById(@Param('id') id: string) {
     return this.routesService.getRouteById(id);
@@ -27,7 +41,7 @@ export class RoutesController {
     return this.routesService.getStopsByRoute(id);
   }
 
-  @Get(':id/fare')
+  @Get([':id/fare', ':id/fares'])
   calculateFare(
     @Param('id') id: string,
     @Query('from') from: string,

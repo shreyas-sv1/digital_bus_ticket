@@ -67,4 +67,12 @@ export class SessionsController {
   refreshQR(@Request() req: any, @Param('id') id: string) {
     return this.sessionsService.refreshQR(req.user.userId, id);
   }
+
+  // Traveler polling fallback
+  @Get(':id/status')
+  @Roles('TRAVELER')
+  @UseGuards(RolesGuard)
+  getSessionStatus(@Request() req: any, @Param('id') id: string) {
+    return this.sessionsService.getSessionStatus(req.user.userId, id);
+  }
 }

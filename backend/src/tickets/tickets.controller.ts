@@ -69,7 +69,8 @@ export class TicketsController {
   @Post('verify-payment')
   @UseGuards(AuthGuard('jwt'))
   verifyPayment(
-    @Body() body: {
+    @Body()
+    body: {
       razorpayOrderId: string;
       razorpayPaymentId: string;
       razorpaySignature: string;
