@@ -80,3 +80,16 @@ Thumbs.db
 temp/
 tmp/
 *.backup
+
+# 🗃️ PRISMA GENERATED CLIENT (run `npx prisma generate` locally)
+backend/src/generated/
+*.dll.node
+*.wasm
+prisma/generated/
+
+# 📋 TS BUILD INFO
+*.tsbuildinfo
+
+# 🔒 OLD/BACKUP SOURCE FILES
+*.bak
+*.old
